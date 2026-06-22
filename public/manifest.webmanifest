@@ -1,0 +1,21 @@
+{
+  "name": "WAWI Staff",
+  "short_name": "WAWI Staff",
+  "start_url": "/staff",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/Aurea.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/Aurea.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
