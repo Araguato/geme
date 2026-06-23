@@ -10,8 +10,8 @@ RUN a2enmod rewrite
 
 WORKDIR /var/www/html
 
-# Zuerst nur Composer-Dateien kopieren (für besseren Cache)
-COPY composer.json composer.lock ./
+# Zuerst die Composer-Datei kopieren (für besseren Cache)
+COPY composer.json ./
 
 # Composer aus offiziellem Image holen
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
