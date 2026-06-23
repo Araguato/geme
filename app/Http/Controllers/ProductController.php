@@ -8,6 +8,9 @@ use App\Models\Product;
 use App\Models\ProductBarcode;
 use App\Models\AuditLog;
 use App\Models\Unit;
+use App\Models\Warehouse;
+use App\Models\Location;
+use App\Services\TranslationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
@@ -49,7 +52,9 @@ class ProductController extends Controller
     {
         $categories = Category::orderBy('name')->get();
         $units = Unit::where('is_active', true)->orderBy('category')->orderBy('name')->get();
-        return view('products.create', compact('categories', 'units'));
+        $warehouses = Warehouse::orderBy('name')->get();
+        $locations = Location::orderBy('name')->get();
+        return view('products.create', compact('categories', 'units', 'warehouses', 'locations'));
     }
 
     public function store(Request $request)
@@ -59,6 +64,14 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'sku' => 'nullable|string|max:50|unique:products,sku',
             'description' => 'nullable|string',
+            'description_zh' => 'nullable|string',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
+            'location_id' => 'nullable|exists:locations,id',
+            'aisle' => 'nullable|string|max:50',
+            'shelf' => 'nullable|string|max:50',
+            'rack' => 'nullable|string|max:50',
+            'bin' => 'nullable|string|max:50',
+            'section' => 'nullable|string|max:50',
             'price' => 'required|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
             'markup_percent' => 'nullable|numeric|min:0',
@@ -83,6 +96,12 @@ class ProductController extends Controller
 
         if (!empty($data['sku'])) {
             $data['sku'] = trim($data['sku']);
+        }
+
+        $data = $this->syncLocationDetails($data);
+
+        if (empty($data['description_zh']) && !empty($data['description'])) {
+            $data['description_zh'] = app(TranslationService::class)->translateToChinese($data['description']);
         }
 
         if ($request->hasFile('image')) {
@@ -135,8 +154,69 @@ class ProductController extends Controller
     {
         $categories = Category::orderBy('name')->get();
         $units = Unit::where('is_active', true)->orderBy('category')->orderBy('name')->get();
+        $warehouses = Warehouse::orderBy('name')->get();
+        $locations = Location::orderBy('name')->get();
         $product->load('barcodes');
-        return view('products.edit', compact('product', 'categories', 'units'));
+        return view('products.edit', compact('product', 'categories', 'units', 'warehouses', 'locations'));
+    }
+
+    public function label(Product $product)
+    {
+        return view('products.label', compact('product'));
+    }
+
+    public function bulkLabels(Request $request)
+    {
+        $warehouseId = $request->query('warehouse_id');
+        $locationId = $request->query('location_id');
+        $categoryId = $request->query('category_id');
+        $search = $request->query('search');
+
+        $query = Product::with(['category', 'barcodes', 'warehouse', 'location'])
+            ->where('is_active', true)
+            ->orderBy('name');
+
+        if ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+        }
+
+        if ($locationId) {
+            $query->where('location_id', $locationId);
+        }
+
+        if ($categoryId) {
+            $query->where('category_id', $categoryId);
+        }
+
+        if ($search) {
+            $searchTerm = trim($search);
+            if ($searchTerm !== '') {
+                $query->where(function ($q) use ($searchTerm) {
+                    $like = '%' . $searchTerm . '%';
+                    $q->where('name', 'like', $like)
+                        ->orWhere('sku', 'like', $like)
+                        ->orWhereHas('barcodes', function ($qb) use ($like) {
+                            $qb->where('barcode', 'like', $like);
+                        });
+                });
+            }
+        }
+
+        $products = $query->get();
+        $warehouses = Warehouse::orderBy('name')->get();
+        $locations = Location::orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
+
+        return view('products.labels', compact(
+            'products',
+            'warehouses',
+            'locations',
+            'categories',
+            'warehouseId',
+            'locationId',
+            'categoryId',
+            'search'
+        ));
     }
 
     public function update(Request $request, Product $product)
@@ -146,6 +226,14 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'sku' => 'nullable|string|max:50|unique:products,sku,' . $product->id,
             'description' => 'nullable|string',
+            'description_zh' => 'nullable|string',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
+            'location_id' => 'nullable|exists:locations,id',
+            'aisle' => 'nullable|string|max:50',
+            'shelf' => 'nullable|string|max:50',
+            'rack' => 'nullable|string|max:50',
+            'bin' => 'nullable|string|max:50',
+            'section' => 'nullable|string|max:50',
             'price' => 'required|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
             'markup_percent' => 'nullable|numeric|min:0',
@@ -170,6 +258,12 @@ class ProductController extends Controller
 
         if (!empty($data['sku'])) {
             $data['sku'] = trim($data['sku']);
+        }
+
+        $data = $this->syncLocationDetails($data);
+
+        if (empty($data['description_zh']) && !empty($data['description'])) {
+            $data['description_zh'] = app(TranslationService::class)->translateToChinese($data['description']);
         }
 
         if ($request->hasFile('image')) {
@@ -257,6 +351,30 @@ class ProductController extends Controller
         ]);
 
         return redirect()->route('products.index');
+    }
+
+    private function syncLocationDetails(array $data): array
+    {
+        if (!empty($data['location_id'])) {
+            $location = Location::find($data['location_id']);
+            if ($location) {
+                $data['warehouse_id'] = $location->warehouse_id;
+                $data['aisle'] = $location->aisle;
+                $data['shelf'] = $location->shelf;
+                $data['rack'] = $location->rack;
+                $data['bin'] = $location->bin;
+                $data['section'] = $location->section;
+            }
+        } else {
+            $data['warehouse_id'] = null;
+            $data['aisle'] = null;
+            $data['shelf'] = null;
+            $data['rack'] = null;
+            $data['bin'] = null;
+            $data['section'] = null;
+        }
+
+        return $data;
     }
 
     public function destroy(Product $product)

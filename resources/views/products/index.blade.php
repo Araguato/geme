@@ -6,6 +6,9 @@
     <div class="btn-group" role="group" id="productsActions">
         <a href="{{ route('products.export.csv') }}" class="btn btn-outline-secondary">{{ __('ui.products.export_csv') }}</a>
         <a href="{{ route('products.import.form') }}" class="btn btn-outline-primary">{{ __('ui.products.import_csv') }}</a>
+        <a href="{{ route('products.labels.bulk') }}" class="btn btn-outline-dark">
+            <i class="bi bi-printer"></i> Etiquetas
+        </a>
         <a href="{{ route('products.create') }}" class="btn btn-primary" id="productsCreateBtn">{{ __('ui.products.new_product') }}</a>
     </div>
 </div>
@@ -48,6 +51,7 @@
         <th>Código</th>
         <th>Barcode</th>
         <th>Categoría</th>
+        <th>Ubicación</th>
         <th>Precio</th>
         <th>Activo</th>
         <th>Acciones</th>
@@ -67,10 +71,19 @@
             <td>{{ $product->sku }}</td>
             <td>{{ $product->barcodes?->first()?->barcode ?? '-' }}</td>
             <td>{{ $product->category?->name }}</td>
+            <td>
+                @php
+                    $location = collect([$product->warehouse?->name, $product->location?->name, $product->aisle, $product->shelf, $product->rack, $product->bin, $product->section])->filter()->implode(' / ');
+                @endphp
+                {{ $location ?: '-' }}
+            </td>
             <td>$ {{ number_format($product->price, 2) }}</td>
             <td>{{ $product->is_active ? 'Sí' : 'No' }}</td>
             <td>
                 <a href="{{ route('products.edit', $product) }}" class="btn btn-sm btn-secondary">Editar</a>
+                <a href="{{ route('products.label', $product) }}" class="btn btn-sm btn-outline-dark" target="_blank" title="Imprimir etiqueta">
+                    <i class="bi bi-printer"></i>
+                </a>
                 <form action="{{ route('products.destroy', $product) }}" method="POST" style="display:inline-block" onsubmit="return confirm('¿Eliminar producto?')">
                     @csrf
                     @method('DELETE')

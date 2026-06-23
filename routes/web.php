@@ -18,11 +18,18 @@ use App\Http\Controllers\ErrorReportController;
 use App\Http\Controllers\LicenseController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ExpenseCategoryController;
-use App\Http\Controllers\FiscalLedgerReportController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\PosController;
+use App\Http\Controllers\CashShiftController;
+use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\UnitConversionAdminController;
 use App\Http\Controllers\RecurringSupplierInvoiceController;
 use App\Http\Controllers\HelpCenterController;
+use App\Http\Controllers\FiscalLedgerController;
+use App\Http\Controllers\PartyController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PayrollPeriodController;
 use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayrollEntryController;
@@ -32,6 +39,10 @@ use Illuminate\Support\Facades\DB;
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Catálogo público para clientes
+Route::get('catalogo', [CatalogController::class, 'index'])->name('catalog.index');
+Route::get('catalogo/{product}', [CatalogController::class, 'show'])->name('catalog.show');
 
 Route::get('/license', [LicenseController::class, 'show'])->name('license.show');
 Route::post('/license', [LicenseController::class, 'activate'])->name('license.activate');
@@ -48,9 +59,8 @@ Route::get('/debug-db-ping', function () {
 });
 
 // Dashboard Jetstream
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])->name('dashboard');
 
 // Rutas protegidas
 Route::middleware('auth')->group(function () {
@@ -70,9 +80,13 @@ Route::middleware('auth')->group(function () {
     // Catálogo y configuración
     Route::resource('categories', CategoryController::class)->except(['show']);
     Route::resource('products', ProductController::class)->except(['show']);
+    Route::get('products/{product}/label', [ProductController::class, 'label'])->name('products.label');
+    Route::get('products/labels/bulk', [ProductController::class, 'bulkLabels'])->name('products.labels.bulk');
     Route::resource('units', UnitController::class)->except(['show']);
     Route::resource('unit-conversions', UnitConversionAdminController::class)->except(['show']);
     Route::resource('suppliers', SupplierController::class)->except(['show', 'destroy']);
+    Route::get('parties/create', [PartyController::class, 'create'])->name('parties.create');
+    Route::post('parties', [PartyController::class, 'store'])->name('parties.store');
 
     Route::resource('supplier-invoices', SupplierInvoiceController::class)->except(['destroy']);
     Route::post('supplier-invoices/{supplierInvoice}/payments', [SupplierPaymentController::class, 'store'])
@@ -107,6 +121,10 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/finances', [SettingController::class, 'editFinances'])->name('settings.finances.edit');
     Route::post('settings/finances', [SettingController::class, 'updateFinances'])->name('settings.finances.update');
 
+    // Datos fiscales de la empresa (SENIAT)
+    Route::get('settings/company', [SettingController::class, 'editCompany'])->name('settings.company.edit');
+    Route::post('settings/company', [SettingController::class, 'updateCompany'])->name('settings.company.update');
+
     // Idioma y moneda
     Route::get('settings/localization', [SettingController::class, 'editLocalization'])->name('settings.localization.edit');
     Route::post('settings/localization', [SettingController::class, 'updateLocalization'])->name('settings.localization.update');
@@ -121,6 +139,11 @@ Route::middleware('auth')->group(function () {
 
     // Finanzreports
     Route::get('finances/reports/monthly', [ExpenseController::class, 'monthlyReport'])->name('finances.reports.monthly');
+
+    // Libro electrónico SENIAT (Compras / Ventas)
+    Route::get('fiscal-ledger', [FiscalLedgerController::class, 'index'])->name('fiscal-ledger.index');
+    Route::get('fiscal-ledger/tax-report', [FiscalLedgerController::class, 'taxReport'])->name('fiscal-ledger.tax-report');
+    Route::get('fiscal-ledger/export-xml', [FiscalLedgerController::class, 'exportXml'])->name('fiscal-ledger.export-xml');
 
     // Categorías de gastos
     Route::get('finances/categories', [ExpenseCategoryController::class, 'index'])->name('finances.categories.index');
@@ -149,6 +172,16 @@ Route::middleware('auth')->group(function () {
     Route::get('stock/adjust', [StockController::class, 'adjustForm'])->name('stock.adjust.form');
     Route::post('stock/adjust', [StockController::class, 'adjust'])->name('stock.adjust');
     Route::get('stock/{product}/movements', [StockController::class, 'movements'])->name('stock.movements');
+
+    // TPV / Punto de venta
+    Route::get('pos', [PosController::class, 'index'])->name('pos.index');
+    Route::post('pos', [PosController::class, 'store'])->name('pos.store');
+    Route::post('cash-shifts/open', [CashShiftController::class, 'open'])->name('cash-shifts.open');
+    Route::post('cash-shifts/close', [CashShiftController::class, 'close'])->name('cash-shifts.close');
+
+    // Sitios / Depósitos
+    Route::resource('warehouses', WarehouseController::class)->except(['show']);
+    Route::resource('locations', LocationController::class)->except(['show']);
 });
 
 require __DIR__.'/auth.php';

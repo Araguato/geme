@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Location extends Model
 {
@@ -14,6 +15,11 @@ class Location extends Model
         'warehouse_id',
         'code',
         'name',
+        'aisle',
+        'shelf',
+        'rack',
+        'bin',
+        'section',
         'description',
         'is_active',
         'sort_order',
@@ -27,5 +33,15 @@ class Location extends Model
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    public function stockItems(): HasMany
+    {
+        return $this->hasMany(StockItem::class);
     }
 }

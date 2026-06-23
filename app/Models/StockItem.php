@@ -11,6 +11,8 @@ class StockItem extends Model
 
     protected $fillable = [
         'product_id',
+        'warehouse_id',
+        'location_id',
         'unit_id',
         'quantity',
         'unit',
@@ -21,6 +23,16 @@ class StockItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function unit()

@@ -204,4 +204,48 @@ class SettingController extends Controller
 
         return redirect()->route('settings.finances.edit');
     }
+
+    public function editCompany()
+    {
+        $this->authorizeAdmin();
+
+        $companyName = Setting::get('company_name', '');
+        $companyTaxId = Setting::get('company_tax_id', '');
+        $companyAddress = Setting::get('company_address', '');
+        $companyPhone = Setting::get('company_phone', '');
+        $companyEmail = Setting::get('company_email', '');
+        $fiscalRegime = Setting::get('fiscal_regime', 'ORDINARIO');
+
+        return view('settings.company', compact(
+            'companyName',
+            'companyTaxId',
+            'companyAddress',
+            'companyPhone',
+            'companyEmail',
+            'fiscalRegime'
+        ));
+    }
+
+    public function updateCompany(Request $request)
+    {
+        $this->authorizeAdmin();
+
+        $data = $request->validate([
+            'company_name' => 'required|string|max:150',
+            'company_tax_id' => 'required|string|max:20',
+            'company_address' => 'nullable|string|max:255',
+            'company_phone' => 'nullable|string|max:50',
+            'company_email' => 'nullable|email|max:100',
+            'fiscal_regime' => 'required|in:ORDINARIO,SIMPLIFICADO,ESPECIAL',
+        ]);
+
+        Setting::set('company_name', $data['company_name']);
+        Setting::set('company_tax_id', $data['company_tax_id']);
+        Setting::set('company_address', $data['company_address'] ?? '');
+        Setting::set('company_phone', $data['company_phone'] ?? '');
+        Setting::set('company_email', $data['company_email'] ?? '');
+        Setting::set('fiscal_regime', $data['fiscal_regime']);
+
+        return redirect()->route('settings.company.edit')->with('success', 'Datos fiscales actualizados.');
+    }
 }

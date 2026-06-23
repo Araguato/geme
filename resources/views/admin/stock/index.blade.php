@@ -21,6 +21,8 @@
         <thead>
         <tr>
             <th>Producto</th>
+            <th>Depósito</th>
+            <th>Ubicación</th>
             <th>Unidad</th>
             <th class="text-end">Cantidad</th>
             <th class="text-end">Costo promedio</th>
@@ -32,6 +34,19 @@
         @forelse($stockItems as $item)
             <tr>
                 <td>{{ $item->product?->name ?? '—' }}</td>
+                <td>{{ $item->warehouse?->name ?? '—' }}</td>
+                <td>
+                    {{ $item->location?->name ?? '—' }}
+                    @if($item->location && ($item->location->aisle || $item->location->shelf || $item->location->rack || $item->location->bin || $item->location->section))
+                        <small class="text-muted d-block">
+                            {{ $item->location->aisle ? 'Pasillo '.$item->location->aisle : '' }}
+                            {{ $item->location->shelf ? 'Estante '.$item->location->shelf : '' }}
+                            {{ $item->location->rack ? 'Anaquel '.$item->location->rack : '' }}
+                            {{ $item->location->bin ? 'Cajón '.$item->location->bin : '' }}
+                            {{ $item->location->section ? 'Vitrina '.$item->location->section : '' }}
+                        </small>
+                    @endif
+                </td>
                 <td>{{ $item->unit ?: $item->product?->default_unit }}</td>
                 <td class="text-end">{{ number_format($item->quantity, 3) }}</td>
                 <td class="text-end">$ {{ number_format($item->average_cost, 4) }}</td>
@@ -46,7 +61,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="6" class="text-muted">Aún no hay movimientos de inventario registrados.</td>
+                <td colspan="8" class="text-muted">Aún no hay movimientos de inventario registrados.</td>
             </tr>
         @endforelse
         </tbody>

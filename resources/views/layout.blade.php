@@ -8,6 +8,7 @@
     <title>geme - Admin</title>
     <link rel="icon" type="image/png" href="{{ asset('Aurea.png') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/introjs.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     @php
         $storedPrimary = \App\Models\Setting::get('theme_primary_color', '#0f172a');
@@ -316,9 +317,28 @@
                                     <li>
                                         <a class="dropdown-item" href="{{ route('finances.reports.monthly') }}">{{ __('ui.nav.finances_report_monthly') }}</a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('fiscal-ledger.index') }}">Libro Electrónico SENIAT</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('fiscal-ledger.tax-report') }}">Resumen de impuestos</a>
+                                    </li>
                                 </ul>
                             </li>
                         @endif
+
+                        {{-- Ventas / TPV --}}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="salesDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                Ventas
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="salesDropdown">
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('pos.index') }}">TPV / Punto de venta</a>
+                                </li>
+                            </ul>
+                        </li>
 
                         {{-- Inventario principal --}}
                         <li class="nav-item dropdown">
@@ -327,6 +347,14 @@
                                 Inventario
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="inventoryDropdown">
+                                <li class="px-3 text-muted small">Depósitos</li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('warehouses.index') }}">Sitios / Depósitos</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('locations.index') }}">Ubicaciones</a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li class="px-3 text-muted small">Stock</li>
                                 <li>
                                     <a class="dropdown-item" href="{{ route('stock.index') }}">{{ __('ui.layout.current_stock') }}</a>
@@ -381,6 +409,9 @@
                                 </li>
                                 <li>
                                     <a class="dropdown-item" href="{{ route('settings.finances.edit') }}">{{ __('ui.nav.finances_settings') }}</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('settings.company.edit') }}">Datos fiscales (SENIAT)</a>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
 
@@ -491,6 +522,25 @@
     }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/intro.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.WAWI_TOUR_STEPS && window.WAWI_TOUR_STEPS.length > 0 && typeof introJs !== 'undefined') {
+            introJs()
+                .setOptions({
+                    steps: window.WAWI_TOUR_STEPS,
+                    nextLabel: 'Siguiente',
+                    prevLabel: 'Anterior',
+                    skipLabel: 'Saltar',
+                    doneLabel: 'Listo',
+                    showProgress: true,
+                    showBullets: true,
+                    exitOnOverlayClick: false,
+                })
+                .start();
+        }
+    });
+</script>
 @stack('scripts')
 </body>
 </html>

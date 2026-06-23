@@ -1,7 +1,12 @@
 @extends('layout')
 
 @section('content')
-<h1>Nuevo producto</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Nuevo producto</h1>
+    <button class="btn btn-sm btn-outline-secondary" onclick="startProductFormTour()">
+        <i class="bi bi-question-circle"></i> Tour del formulario
+    </button>
+</div>
 
 @if($errors->any())
     <div class="alert alert-danger">
@@ -12,9 +17,9 @@
         </ul>
     </div>
 @endif
-<form action="{{ route('products.store') }}" method="POST" class="mt-3" enctype="multipart/form-data">
+<form action="{{ route('products.store') }}" method="POST" class="mt-3" enctype="multipart/form-data" id="productForm">
     @csrf
-    <div class="mb-3">
+    <div class="mb-3" id="prod-category">
         <label class="form-label">Categoría</label>
         <select name="category_id" class="form-select" required>
             <option value="">Seleccione...</option>
@@ -23,54 +28,84 @@
             @endforeach
         </select>
     </div>
-    <div class="mb-3">
+    <div class="mb-3" id="prod-name">
         <label class="form-label">Nombre</label>
         <input type="text" name="name" class="form-control" required>
     </div>
-    <div class="mb-3">
+    <div class="mb-3" id="prod-sku">
         <label class="form-label">Código / SKU (opcional)</label>
         <input type="text" name="sku" class="form-control" placeholder="Ej: HMB-CASA">
     </div>
-    <div class="mb-3">
+    <div class="mb-3" id="prod-description">
         <label class="form-label">Descripción</label>
         <textarea name="description" class="form-control"></textarea>
     </div>
-    <div class="mb-3">
+    <div class="mb-3" id="prod-description-zh">
+        <label class="form-label">Descripción en chino simplificado (editable, se traduce automáticamente si se deja vacío)</label>
+        <textarea name="description_zh" class="form-control"></textarea>
+    </div>
+    <div class="border rounded p-3 mb-3" id="prod-location">
+        <h5 class="mb-3">Ubicación logística</h5>
+        <div class="row g-3">
+            <div class="col-md-6" id="prod-warehouse">
+                <label class="form-label">Almacén / Bodega</label>
+                <select name="warehouse_id" id="warehouse_id" class="form-select" onchange="filterProductLocations()">
+                    <option value="">Sin asignar</option>
+                    @foreach($warehouses as $warehouse)
+                        <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-6" id="prod-location-select">
+                <label class="form-label">Ubicación</label>
+                <select name="location_id" id="location_id" class="form-select" onchange="showLocationDetails()">
+                    <option value="">Sin asignar</option>
+                    @foreach($locations as $location)
+                        <option value="{{ $location->id }}" data-warehouse="{{ $location->warehouse_id }}" data-aisle="{{ $location->aisle }}" data-shelf="{{ $location->shelf }}" data-rack="{{ $location->rack }}" data-bin="{{ $location->bin }}" data-section="{{ $location->section }}">
+                            {{ $location->name }} @if($location->warehouse) ({{ $location->warehouse->name }}) @endif
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+        <div id="location-details" class="mt-3 small text-muted" style="display: none;"></div>
+    </div>
+    <div class="mb-3" id="prod-image">
         <label class="form-label">Imagen</label>
         <input type="file" name="image" class="form-control" accept="image/*">
         <div class="form-text">Opcional. JPG, PNG o WEBP, máximo 2 MB.</div>
     </div>
-    <div class="border rounded p-3 mb-3">
+    <div class="border rounded p-3 mb-3" id="prod-pricing">
         <h5 class="mb-3">Precio &amp; Impuestos</h5>
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-4" id="prod-cost">
                 <label class="form-label">Costo ($)</label>
                 <input type="number" step="0.01" min="0" name="cost" id="cost" class="form-control" value="{{ old('cost') }}">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4" id="prod-margin">
                 <label class="form-label">Margen de ganancia (%)</label>
                 <input type="number" step="0.01" min="0" name="markup_percent" id="markup_percent" class="form-control" value="{{ old('markup_percent') }}">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4" id="prod-price">
                 <label class="form-label">Precio de venta ($)</label>
                 <input type="number" step="0.01" min="0" name="price" id="price" class="form-control" value="{{ old('price') }}" required>
             </div>
         </div>
-        <div class="form-check mt-3">
+        <div class="form-check mt-3" id="prod-tax">
             <input class="form-check-input" type="checkbox" name="is_tax_inclusive" id="is_tax_inclusive" {{ old('is_tax_inclusive', true) ? 'checked' : '' }}>
             <label class="form-check-label" for="is_tax_inclusive">Precio incluye impuesto</label>
         </div>
-        <div class="form-check mt-2">
+        <div class="form-check mt-2" id="prod-service">
             <input class="form-check-input" type="checkbox" name="is_service" id="is_service" {{ old('is_service') ? 'checked' : '' }}>
             <label class="form-check-label" for="is_service">Servicio (no usa stock)</label>
         </div>
-        <div class="form-check mt-2">
+        <div class="form-check mt-2" id="prod-price-change">
             <input class="form-check-input" type="checkbox" name="is_price_change_allowed" id="is_price_change_allowed" {{ old('is_price_change_allowed') ? 'checked' : '' }}>
             <label class="form-check-label" for="is_price_change_allowed">Cambio de precio permitido</label>
         </div>
     </div>
 
-    <div class="border rounded p-3 mb-3">
+    <div class="border rounded p-3 mb-3" id="prod-barcodes">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <h5 class="mb-0">Barcodes (EAN/UPC)</h5>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="add-barcode-row">Agregar barcode</button>
@@ -108,10 +143,10 @@
         </div>
         <div class="form-text">Usa multiplicador 1 para unidad. Para caja, coloca por ejemplo 6, 12, 24, etc.</div>
     </div>
-    <div class="border rounded p-3 mb-3">
+    <div class="border rounded p-3 mb-3" id="prod-inventory">
         <h5 class="mb-3">Inventario y tipo de producto</h5>
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-6" id="prod-type-checks">
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" name="is_stock_tracked" id="is_stock_tracked">
                     <label class="form-check-label" for="is_stock_tracked">Controla inventario</label>
@@ -125,7 +160,7 @@
                     <label class="form-check-label" for="is_raw_material">Es insumo / materia prima (no se vende directo)</label>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-6" id="prod-units">
                 <div class="mb-2">
                     <label class="form-label" for="stock_unit_id">Unidad de inventario</label>
                     <select name="stock_unit_id" id="stock_unit_id" class="form-select">
@@ -158,7 +193,7 @@
             </div>
         </div>
     </div>
-    <div class="form-check mb-3">
+    <div class="form-check mb-3" id="prod-active">
         <input class="form-check-input" type="checkbox" name="is_active" id="is_active" checked>
         <label class="form-check-label" for="is_active">Activo</label>
     </div>
@@ -238,6 +273,67 @@
             marginInput.addEventListener('input', recalcPriceFromCostAndMargin);
             priceInput.addEventListener('input', recalcMarginFromCostAndPrice);
         }
+
+        function filterProductLocations() {
+            const warehouseId = document.getElementById('warehouse_id').value;
+            const select = document.getElementById('location_id');
+            Array.from(select.options).forEach(option => {
+                if (!option.value) return;
+                option.style.display = !warehouseId || option.dataset.warehouse === warehouseId ? 'block' : 'none';
+            });
+            if (select.options[select.selectedIndex].style.display === 'none') {
+                select.value = '';
+                showLocationDetails();
+            }
+        }
+
+        function showLocationDetails() {
+            const select = document.getElementById('location_id');
+            const option = select.options[select.selectedIndex];
+            const container = document.getElementById('location-details');
+            if (!option.value) {
+                container.style.display = 'none';
+                container.textContent = '';
+                return;
+            }
+            const parts = [];
+            if (option.dataset.aisle) parts.push('Pasillo: ' + option.dataset.aisle);
+            if (option.dataset.shelf) parts.push('Estante: ' + option.dataset.shelf);
+            if (option.dataset.rack) parts.push('Anaquel: ' + option.dataset.rack);
+            if (option.dataset.bin) parts.push('Cajón: ' + option.dataset.bin);
+            if (option.dataset.section) parts.push('Vitrina/Sección: ' + option.dataset.section);
+            container.textContent = parts.join(' | ') || 'Sin detalles';
+            container.style.display = 'block';
+        }
+
+        filterProductLocations();
     })();
+
+    function startProductFormTour() {
+        if (typeof introJs === 'undefined') return;
+        introJs()
+            .setOptions({
+                steps: [
+                    { element: '#prod-category', intro: 'Selecciona la categoría del producto. Antes debes crear categorías desde el menú correspondiente.' },
+                    { element: '#prod-name', intro: 'Nombre del producto como lo verán en el catálogo y el TPV.' },
+                    { element: '#prod-sku', intro: 'Código interno o SKU. Es opcional pero útil para reportes y etiquetas.' },
+                    { element: '#prod-description', intro: 'Descripción del producto. Se traducirá automáticamente al chino si dejas vacío el campo de abajo.' },
+                    { element: '#prod-description-zh', intro: 'Descripción en chino. Si la dejas vacía, se genera automáticamente desde la descripción principal.' },
+                    { element: '#prod-location', intro: 'Aquí asignas el depósito y la ubicación exacta del producto. La ubicación se filtra según el depósito seleccionado.' },
+                    { element: '#prod-image', intro: 'Opcional: sube una imagen del producto para el catálogo público.' },
+                    { element: '#prod-pricing', intro: 'Define costo, margen y precio de venta. Si pones costo y margen, el precio se calcula automáticamente.' },
+                    { element: '#prod-barcodes', intro: 'Agrega códigos de barras para escanear en el TPV. El multiplicador sirve para empaques (ej: caja de 6 unidades).' },
+                    { element: '#prod-inventory', intro: 'Indica si el producto controla stock, si es preparado o materia prima, y selecciona sus unidades.' },
+                    { element: '#prod-active', intro: 'Desactiva productos que ya no vendes. No se eliminan, solo dejan de aparecer en el TPV y catálogo.' }
+                ],
+                nextLabel: 'Siguiente',
+                prevLabel: 'Anterior',
+                skipLabel: 'Saltar',
+                doneLabel: 'Listo',
+                showProgress: true,
+                showBullets: true,
+            })
+            .start();
+    }
 </script>
 @endsection

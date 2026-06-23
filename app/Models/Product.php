@@ -14,8 +14,16 @@ class Product extends Model
         'name',
         'sku',
         'description',
+        'description_zh',
         'price',
         'is_active',
+        'warehouse_id',
+        'location_id',
+        'aisle',
+        'shelf',
+        'rack',
+        'bin',
+        'section',
         'image_path',
         'is_stock_tracked',
         'is_prepared',
@@ -40,6 +48,16 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function barcodes()

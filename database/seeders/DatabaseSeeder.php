@@ -8,6 +8,8 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Unit;
 use App\Models\UnitConversion;
+use App\Models\Warehouse;
+use App\Models\Location;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -32,6 +34,18 @@ class DatabaseSeeder extends Seeder
                 ['description' => $description]
             );
         }
+
+        // Almacén y ubicación por defecto para que el sistema sea usable
+        $defaultWarehouse = Warehouse::firstOrCreate(
+            ['code' => 'MAIN'],
+            ['name' => 'Almacén principal', 'is_active' => true]
+        );
+        Location::firstOrCreate(
+            ['warehouse_id' => $defaultWarehouse->id, 'code' => 'GEN'],
+            ['name' => 'General', 'is_active' => true]
+        );
+
+        $this->call(LocationSeeder::class);
 
         $admin = User::updateOrCreate(
             ['email' => 'admin@geme.com'],

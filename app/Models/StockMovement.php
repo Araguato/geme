@@ -11,6 +11,9 @@ class StockMovement extends Model
 
     protected $fillable = [
         'product_id',
+        'warehouse_id',
+        'to_warehouse_id',
+        'location_id',
         'unit_id',
         'movement_date',
         'type',
@@ -24,6 +27,11 @@ class StockMovement extends Model
         'reference_type',
         'reference_id',
         'performed_by',
+        'aisle',
+        'shelf',
+        'rack',
+        'bin',
+        'section',
     ];
 
     protected $casts = [
@@ -43,5 +51,20 @@ class StockMovement extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'performed_by');
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function toWarehouse()
+    {
+        return $this->belongsTo(Warehouse::class, 'to_warehouse_id');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class);
     }
 }
