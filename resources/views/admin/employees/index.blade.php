@@ -3,14 +3,16 @@
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1>Empleados</h1>
-        <a href="{{ route('employees.create') }}" class="btn btn-primary">Nuevo empleado</a>
+        <div>
+            <a href="{{ route('employees.create') }}" class="btn btn-primary" id="employeesCreateBtn">Nuevo empleado</a>
+        </div>
     </div>
 
     @if(session('status'))
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
 
-    <table class="table table-striped align-middle">
+    <table class="table table-striped align-middle" id="employeesTable">
         <thead>
         <tr>
             <th>Nombre</th>
@@ -69,4 +71,12 @@
     </table>
 
     {{ $employees->links() }}
+
+    <script>
+        window.GEME_TOUR_STEPS = [
+            { intro: 'Gestión de empleados. Aquí registras el personal, sus datos laborales, salarios y vínculos con usuarios del sistema.' },
+            { element: '#employeesCreateBtn', intro: 'Crea un nuevo empleado. Puedes vincularlo a un usuario existente o dejarlo sin usuario.' },
+            { element: '#employeesTable', intro: 'Listado de empleados con documento, teléfono, salario, estado y vínculo de usuario. Usa Editar para actualizar datos.' }
+        ];
+    </script>
 @endsection

@@ -193,6 +193,19 @@
     </form>
 
     <script>
+        window.GEME_TOUR_STEPS = [
+            { element: '#adj-product', intro: 'Selecciona el producto al que le vas a mover el stock. Si eliges uno, la página recarga para mostrar su stock actual.' },
+            { element: '#adj-stock-info', intro: 'Aquí ves el stock actual y el costo promedio del producto seleccionado.' },
+            { element: '#adj-type', intro: 'Elige el tipo de movimiento: entrada, salida, ajuste manual o transferencia entre depósitos.' },
+            { element: '#adj-reason', intro: 'Describe el motivo del movimiento. Ej: Compra, merma, corrección de inventario.' },
+            { element: '#adj-warehouse', intro: 'Selecciona el depósito origen del movimiento.' },
+            { element: '#adj-location', intro: 'Selecciona la ubicación exacta dentro del depósito. Se filtra automáticamente por depósito y rellena los detalles.' },
+            { element: '#to-warehouse-wrapper', intro: 'En transferencias, indica el depósito destino.' },
+            { element: '#to-location-wrapper', intro: 'En transferencias, indica la ubicación destino.' },
+            { element: '#adj-details', intro: 'Estos campos se rellenan automáticamente al elegir una ubicación. Puedes editarlos manualmente si es necesario.' },
+            { element: '#adj-qty', intro: 'Indica la cantidad y unidad del movimiento. En entradas, también puedes registrar el costo unitario.' }
+        ];
+
         function toggleTransfer() {
             const type = document.getElementById('type').value;
             document.getElementById('to-warehouse-wrapper').style.display = type === 'transfer' ? 'block' : 'none';

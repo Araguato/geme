@@ -153,6 +153,14 @@
 
 <script>
 (function() {
+    window.GEME_TOUR_STEPS = [
+        { element: '#posProductsCard', intro: 'Busca y selecciona productos para agregarlos a la venta.' },
+        { element: '#product-search', intro: 'Escribe aquí para filtrar productos rápidamente.' },
+        { element: '#posCustomer', intro: 'Opcionalmente selecciona un cliente registrado con RIF para el libro de ventas SENIAT.' },
+        { element: '#posCartCard', intro: 'Revisa el carrito, ajusta cantidades o precios antes de finalizar.' },
+        { element: '#posPayment', intro: 'Elige el método de pago y el monto recibido.' }
+    ];
+
     const cart = [];
     const tbody = document.querySelector('#cart-table tbody');
     const totalEl = document.getElementById('cart-total');

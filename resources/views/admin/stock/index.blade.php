@@ -17,7 +17,7 @@
         $ {{ number_format($totalValue, 2) }}
     </div>
 
-    <table class="table table-striped align-middle">
+    <table class="table table-striped align-middle" id="stockTable">
         <thead>
         <tr>
             <th>Producto</th>
@@ -66,4 +66,13 @@
         @endforelse
         </tbody>
     </table>
+
+    <script>
+        window.GEME_TOUR_STEPS = [
+            { intro: 'Esta es la vista de stock actual. Aquí ves la cantidad disponible de cada producto por depósito y ubicación.' },
+            { element: '#stockTable', intro: 'Tabla de stock: muestra producto, depósito, ubicación, cantidad, costo promedio y valor total.' },
+            { element: 'a.btn-primary[href="{{ route('stock.adjust.form') }}"]', intro: 'Desde aquí puedes registrar una entrada, salida, ajuste o transferencia de inventario.' },
+            { element: 'a.btn-warning', intro: 'Haz clic en Kardex para ver el historial de movimientos de un producto.' }
+        ];
+    </script>
 @endsection
