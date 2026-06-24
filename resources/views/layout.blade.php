@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0f172a">
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <title>geme - Admin</title>
-    <link rel="icon" type="image/png" href="{{ asset('Aurea.png') }}">
+    <link rel="icon" type="image/jpeg" href="{{ asset('logo-quorisk.jpg') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/introjs.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -519,11 +519,7 @@
 <div class="mb-3 text-center">
     <div class="d-inline-flex align-items-center px-3 py-2 rounded-pill" style="background-color: rgba(0,0,0,0.55); box-shadow: 0 0.35rem 1rem rgba(0,0,0,0.7);">
         <span class="me-3 rounded-circle d-flex justify-content-center align-items-center" style="width: 52px; height: 52px; background: rgba(0,0,0,0.8); overflow: hidden;">
-            @if($themeLogoUrl)
-                <img src="{{ $themeLogoUrl }}" alt="Logo" style="max-width: 100%; max-height: 100%; object-fit: cover;">
-            @else
-                <span class="fw-bold" style="font-size: 0.9rem;">LOGO</span>
-            @endif
+            <img src="{{ $themeLogoUrl ?: asset('logo-quorisk.jpg') }}" alt="Logo de {{ $businessName }}" style="max-width: 100%; max-height: 100%; object-fit: cover;">
         </span>
         <div class="text-start">
             <div class="fw-semibold" style="letter-spacing: 0.04em;">{{ strtoupper($businessName) }}</div>

@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', \App\Models\Setting::get('business_name', config('app.name', 'Tu negocio')))</title>
+    <link rel="icon" type="image/jpeg" href="{{ asset('logo-quorisk.jpg') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -21,7 +22,10 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url('/') }}">{{ $businessName }}</a>
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{{ url('/') }}">
+                <img src="{{ asset('logo-quorisk.jpg') }}" alt="{{ $businessName }}" style="height: 32px; width: 32px; object-fit: cover; border-radius: 50%;">
+                {{ $businessName }}
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
                 <span class="navbar-toggler-icon"></span>
             </button>
