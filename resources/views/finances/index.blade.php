@@ -112,7 +112,7 @@
 
 @push('scripts')
     <script>
-        window.WAWI_TOUR_STEPS = [
+        window.GEME_TOUR_STEPS = [
             {
                 intro: 'Bienvenido al módulo de finanzas. Aquí registras gastos del negocio y consumos personales.'
             },

@@ -1,7 +1,7 @@
 {
-  "name": "WAWI Staff",
-  "short_name": "WAWI Staff",
-  "start_url": "/staff",
+  "name": "geme",
+  "short_name": "geme",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0b1220",

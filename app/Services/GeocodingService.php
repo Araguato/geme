@@ -23,7 +23,7 @@ class GeocodingService
                 $response = Http::timeout(10)
                     ->acceptJson()
                     ->withHeaders([
-                        'User-Agent' => (string) config('app.name', 'WAWI') . ' Geocoder',
+                        'User-Agent' => (string) config('app.name', 'geme') . ' Geocoder',
                     ])
                     ->get('https://nominatim.openstreetmap.org/search', [
                         'q' => $q,

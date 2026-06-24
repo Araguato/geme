@@ -59,7 +59,7 @@
 </table>
 
 <script>
-    window.WAWI_TOUR_STEPS = [
+    window.GEME_TOUR_STEPS = [
         {
             intro: 'Aquí administras las ubicaciones físicas dentro de cada depósito. Definirlas bien evita que los productos se "pierdan" por tipeos como "Bitrina" en lugar de "Vitrina".'
         },
@@ -77,7 +77,7 @@
         if (typeof introJs === 'undefined') return;
         introJs()
             .setOptions({
-                steps: window.WAWI_TOUR_STEPS,
+                steps: window.GEME_TOUR_STEPS,
                 nextLabel: 'Siguiente',
                 prevLabel: 'Anterior',
                 skipLabel: 'Saltar',

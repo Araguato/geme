@@ -96,7 +96,7 @@
 </table>
 
 <script>
-    window.WAWI_TOUR_STEPS = [
+    window.GEME_TOUR_STEPS = [
         {
             intro: 'Aquí administras los productos del catálogo (precios, códigos, categoría y estado).'
         },

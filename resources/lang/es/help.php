@@ -2,7 +2,7 @@
 
 return [
     'title' => 'Centro de ayuda',
-    'subtitle' => 'Encuentra guías prácticas, pasos a paso y sugerencias para operar WAWI con tu equipo.',
+    'subtitle' => 'Encuentra guías prácticas, pasos a paso y sugerencias para operar geme con tu equipo.',
     'search_placeholder' => 'Buscar por palabra clave (ej.: "nómina", "TPV", "inventario")',
     'search_hint' => 'Escribe al menos dos letras para encontrar artículos relacionados.',
     'search_action' => 'Buscar',
@@ -42,7 +42,7 @@ return [
             'articles' => [
                 'primeros-pasos' => [
                     'title' => 'Checklist inicial del sistema',
-                    'summary' => 'Tareas recomendadas para poner WAWI en marcha desde cero.',
+                    'summary' => 'Tareas recomendadas para poner geme en marcha desde cero.',
                     'estimated_time' => '5 minutos',
                     'content' => <<<'HTML'
 <p>Completa este checklist para garantizar que la plataforma esté lista antes de vender:</p>
@@ -62,7 +62,7 @@ HTML,
                     'summary' => 'Define perfiles de acceso para proteger operaciones sensibles.',
                     'estimated_time' => '4 minutos',
                     'content' => <<<'HTML'
-<p>WAWI incluye roles predefinidos que puedes asignar a cada usuario:</p>
+<p>geme incluye roles predefinidos que puedes asignar a cada usuario:</p>
 <ul>
     <li><strong>Administrador:</strong> acceso completo para configuración, reportes y finanzas.</li>
     <li><strong>Cajero:</strong> acceso al TPV rápido, caja, órdenes y reportes diarios.</li>

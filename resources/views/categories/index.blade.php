@@ -42,7 +42,7 @@
 </table>
 
 <script>
-    window.WAWI_TOUR_STEPS = [
+    window.GEME_TOUR_STEPS = [
         {
             intro: 'Aquí administras las categorías del catálogo.'
         },

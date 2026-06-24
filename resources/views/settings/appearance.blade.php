@@ -18,7 +18,7 @@
                 @php
                     $currentVariant = old('theme_variant', $themeVariant ?? 'classic');
                 @endphp
-                <option value="classic" {{ $currentVariant === 'classic' ? 'selected' : '' }}>WAWI (oscuro)</option>
+                <option value="classic" {{ $currentVariant === 'classic' ? 'selected' : '' }}>geme (oscuro)</option>
                 <option value="light" {{ $currentVariant === 'light' ? 'selected' : '' }}>Claro neutro</option>
                 <option value="dark" {{ $currentVariant === 'dark' ? 'selected' : '' }}>Oscuro gris</option>
                 <option value="vibrant" {{ $currentVariant === 'vibrant' ? 'selected' : '' }}>Clásico alegre (rojo / dorado)</option>

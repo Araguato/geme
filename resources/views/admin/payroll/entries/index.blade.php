@@ -91,7 +91,7 @@
 
 @push('scripts')
     <script>
-        window.WAWI_TOUR_STEPS = [
+        window.GEME_TOUR_STEPS = [
             {
                 intro: 'Visualiza las entradas de nómina por empleado: montos brutos, deducciones y pago neto.'
             },

@@ -37,7 +37,7 @@
 </table>
 
 <script>
-    window.WAWI_TOUR_STEPS = [
+    window.GEME_TOUR_STEPS = [
         {
             intro: 'Gestión de usuarios del sistema. Aquí asignas accesos y roles.'
         },

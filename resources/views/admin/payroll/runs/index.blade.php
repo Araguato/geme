@@ -128,7 +128,7 @@
 
 @push('scripts')
     <script>
-        window.WAWI_TOUR_STEPS = [
+        window.GEME_TOUR_STEPS = [
             {
                 intro: 'Aquí gestionas las corridas de nómina: cada corrida calcula las entradas de pago para un periodo.'
             },

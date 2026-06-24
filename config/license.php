@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'product' => 'WAWI',
+    'product' => 'geme',
 
     'trial_days' => 7,
 

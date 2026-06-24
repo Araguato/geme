@@ -2,7 +2,7 @@
 
 return [
     'title' => 'Help center',
-    'subtitle' => 'Find step-by-step guides and tips to operate WAWI with your team.',
+    'subtitle' => 'Find step-by-step guides and tips to operate geme with your team.',
     'search_placeholder' => 'Search by keyword (e.g.: "payroll", "POS", "inventory")',
     'search_hint' => 'Type at least two letters to see related articles.',
     'search_action' => 'Search',
@@ -42,7 +42,7 @@ return [
             'articles' => [
                 'primeros-pasos' => [
                     'title' => 'Initial system checklist',
-                    'summary' => 'Recommended tasks to set WAWI up from scratch.',
+                    'summary' => 'Recommended tasks to set geme up from scratch.',
                     'estimated_time' => '5 minutes',
                     'content' => <<<'HTML'
 <p>Complete this checklist to ensure the platform is ready before selling:</p>
@@ -62,7 +62,7 @@ HTML,
                     'summary' => 'Define access profiles to protect sensitive operations.',
                     'estimated_time' => '4 minutes',
                     'content' => <<<'HTML'
-<p>WAWI includes predefined roles you can assign to each user:</p>
+<p>geme includes predefined roles you can assign to each user:</p>
 <ul>
     <li><strong>Administrator:</strong> full access to settings, reports and finances.</li>
     <li><strong>Cashier:</strong> access to Fast POS, cash management, orders and daily reports.</li>

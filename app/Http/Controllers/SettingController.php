@@ -65,7 +65,7 @@ class SettingController extends Controller
         $themeBackgroundMode = Setting::get('theme_background_mode', 'gradient');
         $themeBackgroundImageUrl = Setting::get('theme_background_image_url', '');
         $themeLogoUrl = Setting::get('theme_logo_url', '');
-        $businessName = Setting::get('business_name', 'WAWI');
+        $businessName = Setting::get('business_name', 'geme');
         $themeVariant = Setting::get('theme_variant', 'classic');
 
         return view('settings.appearance', compact(

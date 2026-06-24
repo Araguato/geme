@@ -72,7 +72,7 @@
             background-attachment: fixed;
         }
 
-        .navbar-wawi {
+        .navbar-geme {
             @if($isLight)
                 background: linear-gradient(90deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.96) 40%, rgba(226, 232, 240, 0.95) 70%, rgba(56, 189, 248, 0.25) 100%);
             @else
@@ -86,21 +86,21 @@
             z-index: 1030;
         }
 
-        .navbar-wawi .navbar-brand,
-        .navbar-wawi .nav-link,
-        .navbar-wawi .navbar-toggler-icon {
+        .navbar-geme .navbar-brand,
+        .navbar-geme .nav-link,
+        .navbar-geme .navbar-toggler-icon {
             color: {{ $isLight ? '#0f172a' : '#e2e8f0' }} !important;
         }
 
-        .navbar-wawi .nav-link,
-        .navbar-wawi .navbar-brand {
+        .navbar-geme .nav-link,
+        .navbar-geme .navbar-brand {
             font-size: 1.1rem;
             font-weight: 600;
         }
 
-        .navbar-wawi .nav-link.active,
-        .navbar-wawi .nav-link:focus,
-        .navbar-wawi .nav-link:hover {
+        .navbar-geme .nav-link.active,
+        .navbar-geme .nav-link:focus,
+        .navbar-geme .nav-link:hover {
             color: #ffffff !important;
             text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
         }
@@ -288,7 +288,7 @@
     </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark navbar-wawi mb-4">
+<nav class="navbar navbar-expand-lg navbar-dark navbar-geme mb-4">
     <div class="container-fluid">
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
                 aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -298,7 +298,7 @@
         <div class="collapse navbar-collapse" id="mainNavbar">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item d-none" id="tourNavItem">
-                    <a class="nav-link" href="javascript:void(0)" onclick="startWawiTour()" title="Iniciar tour de ayuda">
+                    <a class="nav-link" href="javascript:void(0)" onclick="startGemeTour()" title="Iniciar tour de ayuda">
                         <i class="bi bi-question-circle"></i> Tour
                     </a>
                 </li>
@@ -546,11 +546,11 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/intro.min.js"></script>
 <script>
-    function startWawiTour() {
-        if (window.WAWI_TOUR_STEPS && window.WAWI_TOUR_STEPS.length > 0 && typeof introJs !== 'undefined') {
+    function startGemeTour() {
+        if (window.GEME_TOUR_STEPS && window.GEME_TOUR_STEPS.length > 0 && typeof introJs !== 'undefined') {
             introJs()
                 .setOptions({
-                    steps: window.WAWI_TOUR_STEPS,
+                    steps: window.GEME_TOUR_STEPS,
                     nextLabel: 'Siguiente',
                     prevLabel: 'Anterior',
                     skipLabel: 'Saltar',
@@ -564,7 +564,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        if (window.WAWI_TOUR_STEPS && window.WAWI_TOUR_STEPS.length > 0 && typeof introJs !== 'undefined') {
+        if (window.GEME_TOUR_STEPS && window.GEME_TOUR_STEPS.length > 0 && typeof introJs !== 'undefined') {
             const tourNavItem = document.getElementById('tourNavItem');
             if (tourNavItem) {
                 tourNavItem.classList.remove('d-none');

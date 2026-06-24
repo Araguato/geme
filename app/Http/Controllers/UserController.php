@@ -31,7 +31,10 @@ class UserController extends Controller
 
         $roles = Role::orderBy('name')->get();
 
-        $enableRestaurantModules = filter_var(env('WAWI_ENABLE_RESTAURANT_MODULES', false), FILTER_VALIDATE_BOOL);
+        $enableRestaurantModules = filter_var(
+            env('GEME_ENABLE_RESTAURANT_MODULES', env('WAWI_ENABLE_RESTAURANT_MODULES', false)),
+            FILTER_VALIDATE_BOOL
+        );
         if (!$enableRestaurantModules) {
             $roles = $roles->reject(fn ($role) => in_array($role->name, ['cocina', 'barra'], true));
         }
@@ -70,7 +73,10 @@ class UserController extends Controller
 
         $roles = Role::orderBy('name')->get();
 
-        $enableRestaurantModules = filter_var(env('WAWI_ENABLE_RESTAURANT_MODULES', false), FILTER_VALIDATE_BOOL);
+        $enableRestaurantModules = filter_var(
+            env('GEME_ENABLE_RESTAURANT_MODULES', env('WAWI_ENABLE_RESTAURANT_MODULES', false)),
+            FILTER_VALIDATE_BOOL
+        );
         if (!$enableRestaurantModules) {
             $roles = $roles->reject(fn ($role) => in_array($role->name, ['cocina', 'barra'], true));
         }

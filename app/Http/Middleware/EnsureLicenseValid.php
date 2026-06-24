@@ -16,7 +16,7 @@ class EnsureLicenseValid
     {
         // Temporary: allow disabling license enforcement via env flag for pilot builds
         // Default is true so current installer runs without requiring a license.
-        if (env('WAWI_LICENSE_DISABLED', true)) {
+        if (env('GEME_LICENSE_DISABLED', env('WAWI_LICENSE_DISABLED', true))) {
             return $next($request);
         }
 

@@ -216,7 +216,7 @@ class LicenseService
 
     private function parseSerial(string $serial): array
     {
-        if (!str_starts_with($serial, 'WAWI1.')) {
+        if (!str_starts_with($serial, 'GEME1.') && !str_starts_with($serial, 'WAWI1.')) {
             return ['ok' => false, 'error' => 'invalid_format'];
         }
 
@@ -226,7 +226,7 @@ class LicenseService
         }
 
         [$prefix, $payloadB64, $sigB64] = $parts;
-        if ($prefix !== 'WAWI1') {
+        if (!in_array($prefix, ['GEME1', 'WAWI1'], true)) {
             return ['ok' => false, 'error' => 'invalid_format'];
         }
 
@@ -260,7 +260,7 @@ class LicenseService
         $hwid = $this->machineGuid() ?: $this->biosUuid() ?: gethostname() ?: php_uname('n');
         $hwid = strtolower(trim((string) $hwid));
 
-        return hash('sha256', 'wawi|'.$hwid);
+        return hash('sha256', 'geme|'.$hwid);
     }
 
     private function machineGuid(): ?string
