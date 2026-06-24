@@ -194,9 +194,21 @@
             box-shadow: 0 0 0 0.2rem rgba(148, 163, 184, 0.45);
         }
 
+        .card {
+            background-color: {{ $isLight ? '#ffffff' : '#0b1220' }};
+            color: {{ $isLight ? '#0f172a' : '#fdf5e6' }};
+            border-color: {{ $isLight ? '#e5e7eb' : '#1e293b' }};
+        }
+
+        .card-header {
+            background-color: {{ $isLight ? '#f8fafc' : 'rgba(0, 0, 0, 0.35)' }};
+            color: {{ $isLight ? '#0f172a' : '#fdf5e6' }};
+            border-bottom-color: {{ $isLight ? '#e5e7eb' : '#1e293b' }};
+        }
+
         .form-label,
         .form-text {
-            color: {{ $isLight ? '#4b5563' : '#f5e6c7' }};
+            color: {{ $isLight ? '#4b5563' : '#e2e8f0' }};
         }
 
         a {
