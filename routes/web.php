@@ -35,6 +35,7 @@ use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayrollEntryController;
 use App\Http\Controllers\PublicOrderController;
 use App\Http\Controllers\CustomerRegistrationController;
+use App\Http\Controllers\LoginLogController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
@@ -58,6 +59,9 @@ Route::get('privacidad', function () {
 // Registro de clientes (protegido con Cloudflare Turnstile)
 Route::get('registro-cliente', [CustomerRegistrationController::class, 'create'])->name('customer.register');
 Route::post('registro-cliente', [CustomerRegistrationController::class, 'store'])->name('customer.register.store');
+
+// Registro de logins (solo admin)
+Route::middleware('auth')->get('admin/login-logs', [LoginLogController::class, 'index'])->name('login-logs.index');
 
 // Pedidos en línea (solo usuarios autenticados, se cobra al retirar / en entrega)
 Route::middleware('auth')->group(function () {

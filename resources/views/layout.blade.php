@@ -424,6 +424,9 @@
                                     <a class="dropdown-item" href="{{ route('users.index') }}">{{ __('ui.nav.users') }}</a>
                                 </li>
                                 <li>
+                                    <a class="dropdown-item" href="{{ route('login-logs.index') }}">Registro de logins</a>
+                                </li>
+                                <li>
                                     <a class="dropdown-item" href="{{ route('settings.localization.edit') }}">{{ __('ui.nav.localization') }}</a>
                                 </li>
                                 <li>
