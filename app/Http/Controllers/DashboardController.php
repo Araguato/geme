@@ -35,10 +35,10 @@ class DashboardController extends Controller
 
         $productsCount = Product::where('is_active', true)->count();
         $lowStock = Product::where('is_active', true)
-            ->whereRaw('(stock_quantity IS NOT NULL AND stock_quantity <= min_stock)')
+            ->whereRaw('(stock_quantity IS NOT NULL AND stock_quantity <= reorder_point)')
             ->orWhere(function ($q) {
                 $q->where('is_active', true)
-                    ->whereColumn('stock_quantity', '<=', 'min_stock');
+                    ->whereColumn('stock_quantity', '<=', 'reorder_point');
             })
             ->count();
 
@@ -53,8 +53,8 @@ class DashboardController extends Controller
             ->get();
 
         $lowStockProducts = Product::where('is_active', true)
-            ->whereColumn('stock_quantity', '<=', 'min_stock')
-            ->where('min_stock', '>', 0)
+            ->whereColumn('stock_quantity', '<=', 'reorder_point')
+            ->where('reorder_point', '>', 0)
             ->orderBy('stock_quantity')
             ->limit(5)
             ->get();
