@@ -33,6 +33,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PayrollPeriodController;
 use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayrollEntryController;
+use App\Http\Controllers\PublicOrderController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
@@ -43,6 +44,15 @@ Route::get('/', function () {
 // Catálogo público para clientes
 Route::get('catalogo', [CatalogController::class, 'index'])->name('catalog.index');
 Route::get('catalogo/{product}', [CatalogController::class, 'show'])->name('catalog.show');
+
+// Pedidos en línea (sin pago, se cobra al retirar / en entrega)
+Route::get('pedido', [PublicOrderController::class, 'index'])->name('public.order.index');
+Route::post('pedido/carrito', [PublicOrderController::class, 'addToCart'])->name('public.cart.add');
+Route::get('pedido/carrito', [PublicOrderController::class, 'cart'])->name('public.cart');
+Route::post('pedido/carrito/quitar', [PublicOrderController::class, 'removeFromCart'])->name('public.cart.remove');
+Route::get('pedido/checkout', [PublicOrderController::class, 'checkout'])->name('public.checkout');
+Route::post('pedido', [PublicOrderController::class, 'store'])->name('public.order.store');
+Route::get('pedido/confirmado', [PublicOrderController::class, 'success'])->name('public.order.success');
 
 Route::get('/license', [LicenseController::class, 'show'])->name('license.show');
 Route::post('/license', [LicenseController::class, 'activate'])->name('license.activate');

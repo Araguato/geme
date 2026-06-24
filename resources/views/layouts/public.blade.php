@@ -3,16 +3,17 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ \App\Models\Setting::get('business_name', config('app.name', 'Inicio')) }}</title>
+    <title>@yield('title', \App\Models\Setting::get('business_name', config('app.name', 'Tu negocio')))</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        .hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 5rem 0; }
+        .hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 4rem 0; }
         .product-card { transition: transform .15s ease, box-shadow .15s ease; }
         .product-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,.1); }
     </style>
+    @stack('styles')
 </head>
-<body>
+<body class="d-flex flex-column min-vh-100">
     @php
         $businessName = \App\Models\Setting::get('business_name', config('app.name', 'Tu negocio'));
         $companyName = \App\Models\Setting::get('company_name', $businessName);
@@ -28,6 +29,17 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="{{ route('catalog.index') }}">Catálogo</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('public.order.index') }}">Hacer pedido</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="{{ route('public.cart') }}">
+                            <i class="bi bi-cart3"></i>
+                            @php $cartCount = count(session('cart', [])); @endphp
+                            @if($cartCount > 0)
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    {{ $cartCount }}
+                                </span>
+                            @endif
+                        </a>
+                    </li>
                     @if (Route::has('login'))
                         @auth
                             <li class="nav-item"><a class="nav-link" href="{{ url('/dashboard') }}">Dashboard</a></li>
@@ -40,51 +52,22 @@
         </div>
     </nav>
 
-    <section class="hero">
-        <div class="container text-center">
-            <h1 class="display-4 fw-bold mb-3">{{ $companyName }}</h1>
-            <p class="lead mb-4">Gestión de inventario, ventas y compras alineadas con SENIAT.</p>
-            <a href="{{ route('catalog.index') }}" class="btn btn-success btn-lg me-2">Ver catálogo</a>
-            <a href="{{ route('public.order.index') }}" class="btn btn-primary btn-lg me-2">Hacer pedido</a>
-            @guest
-                <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg">Acceder al sistema</a>
-            @endguest
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show rounded-0 mb-0" role="alert">
+            <div class="container">{{ session('success') }}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-    </section>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show rounded-0 mb-0" role="alert">
+            <div class="container">{{ session('error') }}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
 
-    <section class="py-5">
-        <div class="container">
-            <h2 class="mb-4">Productos destacados</h2>
-            @php
-                $featured = \App\Models\Product::where('is_active', true)
-                    ->where('is_raw_material', false)
-                    ->orderByDesc('created_at')
-                    ->limit(6)
-                    ->get();
-            @endphp
-            <div class="row g-4">
-                @forelse($featured as $product)
-                    <div class="col-md-4 col-sm-6">
-                        <div class="card h-100 product-card">
-                            <div class="card-body">
-                                <h5 class="card-title">{{ $product->name }}</h5>
-                                <p class="card-text text-muted">{{ Str::limit($product->description, 80) }}</p>
-                                <p class="fw-bold text-success">$ {{ number_format($product->price, 2) }}</p>
-                                <a href="{{ route('catalog.show', $product) }}" class="btn btn-outline-primary btn-sm">Ver detalle</a>
-                            </div>
-                        </div>
-                    </div>
-                @empty
-                    <p class="text-muted">Próximamente publicaremos nuestros productos.</p>
-                @endforelse
-            </div>
-            @if($featured->count() > 0)
-                <div class="text-center mt-4">
-                    <a href="{{ route('catalog.index') }}" class="btn btn-dark">Ver todos los productos</a>
-                </div>
-            @endif
-        </div>
-    </section>
+    <main class="flex-grow-1">
+        @yield('content')
+    </main>
 
     <footer class="bg-light border-top py-4 mt-auto">
         <div class="container text-center text-muted">
@@ -94,5 +77,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    @stack('scripts')
 </body>
 </html>

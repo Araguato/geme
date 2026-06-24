@@ -25,6 +25,10 @@ class DatabaseSeeder extends Seeder
         $roles = [
             'admin' => 'Administrador del sistema',
             'cajero' => 'Cajero',
+            'vendedor' => 'Vendedor / Atención al cliente',
+            'almacenista' => 'Almacenista / Encargado de inventario',
+            'despachador' => 'Despachador / Preparador de pedidos',
+            'supervisor' => 'Supervisor / Gerente de turno',
         ];
 
         $roleModels = [];
