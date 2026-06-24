@@ -36,4 +36,4 @@ EXPOSE 80
 
 # Al iniciar el contenedor: corregir permisos de storage, ejecutar migraciones,
 # asegurar el storage symlink y arrancar Apache en primer plano.
-CMD bash -lc "mkdir -p /var/www/html/storage/framework/views /var/www/html/storage/framework/cache /var/www/html/storage/framework/sessions /var/www/html/storage/logs /var/www/html/storage/app/public && chown -R www-data:www-data /var/www/html/storage && chmod -R 775 /var/www/html/storage && php artisan migrate --force || true && php artisan storage:link || true && apache2-foreground"
+CMD bash -lc "mkdir -p /var/www/html/storage/framework/views /var/www/html/storage/framework/cache /var/www/html/storage/framework/sessions /var/www/html/storage/logs /var/www/html/storage/app/public && chown -R www-data:www-data /var/www/html/storage && chmod -R 775 /var/www/html/storage && php artisan migrate --force || true && php artisan db:seed --force || true && php artisan storage:link || true && apache2-foreground"
