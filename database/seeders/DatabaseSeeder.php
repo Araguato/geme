@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             'almacenista' => 'Almacenista / Encargado de inventario',
             'despachador' => 'Despachador / Preparador de pedidos',
             'supervisor' => 'Supervisor / Gerente de turno',
+            'cliente' => 'Cliente registrado',
         ];
 
         $roleModels = [];

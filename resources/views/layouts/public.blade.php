@@ -28,25 +28,24 @@
             <div class="collapse navbar-collapse" id="navMenu">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="{{ route('catalog.index') }}">Catálogo</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ route('public.order.index') }}">Hacer pedido</a></li>
-                    <li class="nav-item">
-                        <a class="nav-link position-relative" href="{{ route('public.cart') }}">
-                            <i class="bi bi-cart3"></i>
-                            @php $cartCount = count(session('cart', [])); @endphp
-                            @if($cartCount > 0)
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                    {{ $cartCount }}
-                                </span>
-                            @endif
-                        </a>
-                    </li>
-                    @if (Route::has('login'))
-                        @auth
-                            <li class="nav-item"><a class="nav-link" href="{{ url('/dashboard') }}">Dashboard</a></li>
-                        @else
-                            <li class="nav-item"><a class="nav-link" href="{{ route('login') }}">Iniciar sesión</a></li>
-                        @endauth
-                    @endif
+                    @auth
+                        <li class="nav-item"><a class="nav-link" href="{{ route('public.order.index') }}">Hacer pedido</a></li>
+                        <li class="nav-item">
+                            <a class="nav-link position-relative" href="{{ route('public.cart') }}">
+                                <i class="bi bi-cart3"></i>
+                                @php $cartCount = count(session('cart', [])); @endphp
+                                @if($cartCount > 0)
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                        {{ $cartCount }}
+                                    </span>
+                                @endif
+                            </a>
+                        </li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url('/dashboard') }}">Mi cuenta</a></li>
+                    @else
+                        <li class="nav-item"><a class="nav-link" href="{{ route('customer.register') }}">Registrarme</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ route('login') }}">Iniciar sesión</a></li>
+                    @endauth
                 </ul>
             </div>
         </div>

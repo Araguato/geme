@@ -27,14 +27,13 @@
             <div class="collapse navbar-collapse" id="navMenu">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="{{ route('catalog.index') }}">Catálogo</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ route('public.order.index') }}">Hacer pedido</a></li>
-                    @if (Route::has('login'))
-                        @auth
-                            <li class="nav-item"><a class="nav-link" href="{{ url('/dashboard') }}">Dashboard</a></li>
-                        @else
-                            <li class="nav-item"><a class="nav-link" href="{{ route('login') }}">Iniciar sesión</a></li>
-                        @endauth
-                    @endif
+                    @auth
+                        <li class="nav-item"><a class="nav-link" href="{{ route('public.order.index') }}">Hacer pedido</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url('/dashboard') }}">Mi cuenta</a></li>
+                    @else
+                        <li class="nav-item"><a class="nav-link" href="{{ route('customer.register') }}">Registrarme</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ route('login') }}">Iniciar sesión</a></li>
+                    @endauth
                 </ul>
             </div>
         </div>
@@ -45,10 +44,13 @@
             <h1 class="display-4 fw-bold mb-3">{{ $companyName }}</h1>
             <p class="lead mb-4">Gestión de inventario, ventas y compras alineadas con SENIAT.</p>
             <a href="{{ route('catalog.index') }}" class="btn btn-success btn-lg me-2">Ver catálogo</a>
-            <a href="{{ route('public.order.index') }}" class="btn btn-primary btn-lg me-2">Hacer pedido</a>
-            @guest
+            @auth
+                <a href="{{ route('public.order.index') }}" class="btn btn-primary btn-lg me-2">Hacer pedido</a>
+                <a href="{{ url('/dashboard') }}" class="btn btn-outline-light btn-lg">Mi cuenta</a>
+            @else
+                <a href="{{ route('customer.register') }}" class="btn btn-primary btn-lg me-2">Registrarme</a>
                 <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg">Acceder al sistema</a>
-            @endguest
+            @endauth
         </div>
     </section>
 
