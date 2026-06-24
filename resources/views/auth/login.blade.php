@@ -32,6 +32,13 @@
             </label>
         </div>
 
+        <div class="mt-4">
+            @if ($errors->has('turnstile'))
+                <p class="text-sm text-red-600 mb-2">{{ $errors->first('turnstile') }}</p>
+            @endif
+            <div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.site_key') }}" data-callback="turnstileCallback"></div>
+        </div>
+
         <div class="flex items-center justify-end mt-4">
             @if (Route::has('password.request'))
                 <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
@@ -39,9 +46,18 @@
                 </a>
             @endif
 
-            <x-primary-button class="ms-3">
+            <x-primary-button class="ms-3" id="login-submit" disabled>
                 {{ __('Log in') }}
             </x-primary-button>
         </div>
     </form>
+
+    @push('scripts')
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script>
+        function turnstileCallback() {
+            document.getElementById('login-submit').disabled = false;
+        }
+    </script>
+    @endpush
 </x-guest-layout>

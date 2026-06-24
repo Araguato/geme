@@ -46,6 +46,15 @@ Route::get('/', function () {
 Route::get('catalogo', [CatalogController::class, 'index'])->name('catalog.index');
 Route::get('catalogo/{product}', [CatalogController::class, 'show'])->name('catalog.show');
 
+// Páginas legales
+Route::get('terminos', function () {
+    return view('legal.terms');
+})->name('legal.terms');
+
+Route::get('privacidad', function () {
+    return view('legal.privacy');
+})->name('legal.privacy');
+
 // Registro de clientes (protegido con Cloudflare Turnstile)
 Route::get('registro-cliente', [CustomerRegistrationController::class, 'create'])->name('customer.register');
 Route::post('registro-cliente', [CustomerRegistrationController::class, 'store'])->name('customer.register.store');

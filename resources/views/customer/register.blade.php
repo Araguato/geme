@@ -57,7 +57,7 @@
                             <div class="mb-3 form-check">
                                 <input class="form-check-input @error('terms') is-invalid @enderror" type="checkbox" id="terms" name="terms" value="1" required {{ old('terms') ? 'checked' : '' }}>
                                 <label class="form-check-label" for="terms">
-                                    Acepto los términos y condiciones y la política de privacidad. <span class="text-danger">*</span>
+                                    Acepto los <a href="{{ route('legal.terms') }}" target="_blank">términos y condiciones</a> y la <a href="{{ route('legal.privacy') }}" target="_blank">política de privacidad</a>. <span class="text-danger">*</span>
                                 </label>
                                 @error('terms')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
