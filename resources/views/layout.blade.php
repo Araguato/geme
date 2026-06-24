@@ -220,7 +220,12 @@
         }
 
         .text-muted {
-            color: {{ $isLight ? '#6b7280' : '#f0dfc4' }} !important;
+            color: {{ $isLight ? '#6b7280' : '#94a3b8' }} !important;
+        }
+
+        .card .text-muted {
+            color: inherit !important;
+            opacity: 0.75;
         }
 
         .form-control::placeholder,
@@ -292,6 +297,11 @@
 
         <div class="collapse navbar-collapse" id="mainNavbar">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item d-none" id="tourNavItem">
+                    <a class="nav-link" href="javascript:void(0)" onclick="startWawiTour()" title="Iniciar tour de ayuda">
+                        <i class="bi bi-question-circle"></i> Tour
+                    </a>
+                </li>
                 @auth
                     @php($user = auth()->user())
                     @php($financesEnabled = (bool) \App\Models\Setting::get('finances_enabled', 0))
@@ -536,7 +546,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/intro.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    function startWawiTour() {
         if (window.WAWI_TOUR_STEPS && window.WAWI_TOUR_STEPS.length > 0 && typeof introJs !== 'undefined') {
             introJs()
                 .setOptions({
@@ -550,6 +560,15 @@
                     exitOnOverlayClick: false,
                 })
                 .start();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.WAWI_TOUR_STEPS && window.WAWI_TOUR_STEPS.length > 0 && typeof introJs !== 'undefined') {
+            const tourNavItem = document.getElementById('tourNavItem');
+            if (tourNavItem) {
+                tourNavItem.classList.remove('d-none');
+            }
         }
     });
 </script>
