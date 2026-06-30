@@ -50,7 +50,7 @@
                 </a>
             @endif
 
-            <x-primary-button class="ms-3" id="login-submit" {{ $turnstileEnabled ? 'disabled' : '' }}>
+            <x-primary-button class="ms-3" id="login-submit" :disabled="$turnstileEnabled">
                 {{ __('Log in') }}
             </x-primary-button>
         </div>

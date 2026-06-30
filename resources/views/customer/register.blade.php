@@ -71,7 +71,7 @@
                                 </div>
                             @endif
 
-                            <button type="submit" class="btn btn-success btn-lg w-100" id="submit-btn" {{ $turnstileEnabled ? 'disabled' : '' }}>
+                            <button type="submit" class="btn btn-success btn-lg w-100" id="submit-btn" @disabled($turnstileEnabled)>
                                 Crear cuenta
                             </button>
 
