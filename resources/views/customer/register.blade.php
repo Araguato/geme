@@ -62,16 +62,16 @@
                                 @error('terms')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
 
-                            @php($turnstileSiteKey = config('services.turnstile.site_key'))
+                            @php($turnstileEnabled = !app()->environment('local') && config('services.turnstile.site_key'))
 
-                            @if($turnstileSiteKey)
+                            @if($turnstileEnabled)
                                 <div class="mb-3">
                                     @error('turnstile')<div class="alert alert-danger">{{ $message }}</div>@enderror
-                                    <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-callback="turnstileCallback"></div>
+                                    <div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.site_key') }}" data-callback="turnstileCallback"></div>
                                 </div>
                             @endif
 
-                            <button type="submit" class="btn btn-success btn-lg w-100" id="submit-btn" {{ $turnstileSiteKey ? 'disabled' : '' }}>
+                            <button type="submit" class="btn btn-success btn-lg w-100" id="submit-btn" {{ $turnstileEnabled ? 'disabled' : '' }}>
                                 Crear cuenta
                             </button>
 

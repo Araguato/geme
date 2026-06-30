@@ -32,14 +32,14 @@
             </label>
         </div>
 
-        @php($turnstileSiteKey = config('services.turnstile.site_key'))
+        @php($turnstileEnabled = !app()->environment('local') && config('services.turnstile.site_key'))
 
-        @if($turnstileSiteKey)
+        @if($turnstileEnabled)
             <div class="mt-4">
                 @if ($errors->has('turnstile'))
                     <p class="text-sm text-red-600 mb-2">{{ $errors->first('turnstile') }}</p>
                 @endif
-                <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-callback="turnstileCallback"></div>
+                <div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.site_key') }}" data-callback="turnstileCallback"></div>
             </div>
         @endif
 
@@ -50,14 +50,14 @@
                 </a>
             @endif
 
-            <x-primary-button class="ms-3" id="login-submit" {{ $turnstileSiteKey ? 'disabled' : '' }}>
+            <x-primary-button class="ms-3" id="login-submit" {{ $turnstileEnabled ? 'disabled' : '' }}>
                 {{ __('Log in') }}
             </x-primary-button>
         </div>
     </form>
 
     @push('scripts')
-    @if($turnstileSiteKey)
+    @if($turnstileEnabled)
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
         <script>
             function turnstileCallback() {

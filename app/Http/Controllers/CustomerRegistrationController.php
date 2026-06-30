@@ -57,6 +57,10 @@ class CustomerRegistrationController extends Controller
 
     protected function validateTurnstile(Request $request): void
     {
+        if (app()->environment('local')) {
+            return;
+        }
+
         $token = $request->input('cf-turnstile-response');
 
         if (empty($token)) {
