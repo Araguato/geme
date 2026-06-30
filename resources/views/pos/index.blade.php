@@ -27,11 +27,17 @@
 <div class="card mb-4">
     <div class="card-body">
         <h5 class="card-title">Abrir turno de caja</h5>
+        @if($salesLocations->isEmpty())
+            <div class="alert alert-warning mb-3">
+                No hay ubicaciones de venta configuradas.
+                <a href="{{ route('sales-locations.create') }}">Crea una ubicación</a> para poder abrir el turno.
+            </div>
+        @endif
         <form action="{{ route('cash-shifts.open') }}" method="POST" class="row g-3">
             @csrf
             <div class="col-md-3">
                 <label class="form-label">Ubicación de venta</label>
-                <select name="sales_location_id" class="form-select" required>
+                <select name="sales_location_id" class="form-select" required @if($salesLocations->isEmpty()) disabled @endif>
                     <option value="">Seleccione...</option>
                     @foreach($salesLocations as $location)
                         <option value="{{ $location->id }}">{{ $location->name }}</option>
@@ -40,10 +46,10 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">Monto inicial en caja</label>
-                <input type="number" step="0.01" min="0" name="opening_amount" class="form-control" required>
+                <input type="number" step="0.01" min="0" name="opening_amount" class="form-control" required @if($salesLocations->isEmpty()) disabled @endif>
             </div>
             <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">Abrir caja</button>
+                <button type="submit" class="btn btn-primary w-100" @if($salesLocations->isEmpty()) disabled @endif>Abrir caja</button>
             </div>
         </form>
     </div>
