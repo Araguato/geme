@@ -20,6 +20,32 @@ Dieses Dokument hält fest, welche Änderungen (insbesondere an der Datenbank) z
 
 ---
 
+## 2026-06-30 – Multi-Location TPV, Galería de productos, QR en catálogo
+
+- **Branch/Tag:** `master`
+- **Feature/Beschreibung:** Varias ubicaciones de venta para el TPV, galería de imágenes por producto con foto principal, imágenes más grandes en TPV/catálogo, QR en catálogo y TPV para consultar ficha del producto.
+- **Neue Migrationen:**
+  - `2026_06_30_100000_create_sales_locations_table`
+  - `2026_06_30_100100_add_sales_location_id_to_cash_shifts_and_orders`
+  - `2026_06_30_100200_create_product_images_table`
+- **Betroffene Tabellen:**
+  - `sales_locations` (neue Tabelle)
+  - `cash_shifts` (neue Spalte: `sales_location_id`)
+  - `orders` (neue Spalte: `sales_location_id`)
+  - `product_images` (neue Tabelle)
+- **Lokale Schritte:**
+  - `php artisan migrate`
+  - `php artisan view:clear`
+  - Manuell: Ubicaciones de venta anlegen, productos con mehreren Bildern erstellen, TPV-Modal/QR testen, catálogo prüfen.
+- **Server/CapRover Schritte:**
+  - Deploy aktueller `master`-Stand
+  - Im App-Container:
+    - `php artisan migrate --force`
+    - `php artisan view:clear`
+  - Manuell: TPV, catálogo, Administración → Ubicaciones de venta prüfen.
+
+---
+
 ## 2026-01-17 – Finanzen-Modul (Ausgaben & Kategorien)
 
 - **Branch/Tag:** `main`
