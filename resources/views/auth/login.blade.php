@@ -32,12 +32,16 @@
             </label>
         </div>
 
-        <div class="mt-4">
-            @if ($errors->has('turnstile'))
-                <p class="text-sm text-red-600 mb-2">{{ $errors->first('turnstile') }}</p>
-            @endif
-            <div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.site_key') }}" data-callback="turnstileCallback"></div>
-        </div>
+        @php($turnstileSiteKey = config('services.turnstile.site_key'))
+
+        @if($turnstileSiteKey)
+            <div class="mt-4">
+                @if ($errors->has('turnstile'))
+                    <p class="text-sm text-red-600 mb-2">{{ $errors->first('turnstile') }}</p>
+                @endif
+                <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-callback="turnstileCallback"></div>
+            </div>
+        @endif
 
         <div class="flex items-center justify-end mt-4">
             @if (Route::has('password.request'))
@@ -46,18 +50,20 @@
                 </a>
             @endif
 
-            <x-primary-button class="ms-3" id="login-submit" disabled>
+            <x-primary-button class="ms-3" id="login-submit" {{ $turnstileSiteKey ? 'disabled' : '' }}>
                 {{ __('Log in') }}
             </x-primary-button>
         </div>
     </form>
 
     @push('scripts')
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-    <script>
-        function turnstileCallback() {
-            document.getElementById('login-submit').disabled = false;
-        }
-    </script>
+    @if($turnstileSiteKey)
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+        <script>
+            function turnstileCallback() {
+                document.getElementById('login-submit').disabled = false;
+            }
+        </script>
+    @endif
     @endpush
 </x-guest-layout>

@@ -62,12 +62,16 @@
                                 @error('terms')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="mb-3">
-                                @error('turnstile')<div class="alert alert-danger">{{ $message }}</div>@enderror
-                                <div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.site_key') }}" data-callback="turnstileCallback"></div>
-                            </div>
+                            @php($turnstileSiteKey = config('services.turnstile.site_key'))
 
-                            <button type="submit" class="btn btn-success btn-lg w-100" id="submit-btn" disabled>
+                            @if($turnstileSiteKey)
+                                <div class="mb-3">
+                                    @error('turnstile')<div class="alert alert-danger">{{ $message }}</div>@enderror
+                                    <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-callback="turnstileCallback"></div>
+                                </div>
+                            @endif
+
+                            <button type="submit" class="btn btn-success btn-lg w-100" id="submit-btn" {{ $turnstileSiteKey ? 'disabled' : '' }}>
                                 Crear cuenta
                             </button>
 
@@ -84,10 +88,12 @@
 @endsection
 
 @push('scripts')
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<script>
-    function turnstileCallback() {
-        document.getElementById('submit-btn').disabled = false;
-    }
-</script>
+@if($turnstileSiteKey)
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script>
+        function turnstileCallback() {
+            document.getElementById('submit-btn').disabled = false;
+        }
+    </script>
+@endif
 @endpush
