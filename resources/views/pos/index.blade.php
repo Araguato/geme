@@ -80,28 +80,36 @@
                 <input type="text" id="product-search" class="form-control mb-3" placeholder="Buscar producto...">
                 <div class="list-group" id="product-list">
                     @foreach($products as $product)
-                        <button type="button" class="list-group-item list-group-item-action product-item"
-                                data-id="{{ $product->id }}"
-                                data-name="{{ $product->name }}"
-                                data-price="{{ $product->price }}"
-                                data-image="{{ $product->mainImage ? asset('storage/' . $product->mainImage->path) : '' }}">
+                        <div class="list-group-item product-item-wrapper p-2">
                             <div class="d-flex align-items-center gap-3">
-                                @if($product->mainImage)
-                                    <img src="{{ asset('storage/' . $product->mainImage->path) }}" alt="" class="rounded" style="width: 64px; height: 64px; object-fit: cover;">
-                                @else
-                                    <div class="rounded bg-secondary-subtle d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
-                                        <i class="bi bi-image text-secondary fs-4"></i>
-                                    </div>
-                                @endif
-                                <div class="flex-grow-1">
+                                <button type="button" class="btn btn-link p-0 product-info-btn flex-shrink-0"
+                                        data-id="{{ $product->id }}"
+                                        data-name="{{ $product->name }}"
+                                        data-description="{{ $product->description }}"
+                                        data-price="{{ $product->price }}"
+                                        data-image="{{ $product->mainImage ? asset('storage/' . $product->mainImage->path) : '' }}"
+                                        data-url="{{ route('catalog.show', $product) }}"
+                                        title="Ver información y QR">
+                                    @if($product->mainImage)
+                                        <img src="{{ asset('storage/' . $product->mainImage->path) }}" alt="" class="rounded" style="width: 64px; height: 64px; object-fit: cover;">
+                                    @else
+                                        <div class="rounded bg-secondary-subtle d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                            <i class="bi bi-image text-secondary fs-4"></i>
+                                        </div>
+                                    @endif
+                                </button>
+                                <button type="button" class="list-group-item list-group-item-action border-0 product-add-btn flex-grow-1"
+                                        data-id="{{ $product->id }}"
+                                        data-name="{{ $product->name }}"
+                                        data-price="{{ $product->price }}">
                                     <div class="d-flex justify-content-between">
                                         <span class="fw-medium">{{ $product->name }}</span>
                                         <span>$ {{ number_format($product->price, 2) }}</span>
                                     </div>
                                     <small class="text-muted">{{ $product->category?->name }}</small>
-                                </div>
+                                </button>
                             </div>
-                        </button>
+                        </div>
                     @endforeach
                 </div>
             </div>
@@ -177,6 +185,28 @@
     </div>
 </div>
 
+<div class="modal fade" id="productInfoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productInfoModalTitle">Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="productInfoModalImage" src="" alt="" class="img-fluid rounded mb-3" style="max-height: 220px; object-fit: cover;">
+                <p id="productInfoModalDescription" class="text-muted"></p>
+                <div class="mt-3">
+                    <p class="small text-muted mb-2">Escanea para ver la ficha del producto</p>
+                    <img id="productInfoModalQr" src="" alt="Código QR" class="img-fluid">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 (function() {
     window.GEME_TOUR_STEPS = [
@@ -220,7 +250,13 @@
         paymentAmount.value = total.toFixed(2);
     }
 
-    document.querySelectorAll('.product-item').forEach(btn => {
+    const productInfoModal = document.getElementById('productInfoModal');
+    const productInfoModalTitle = document.getElementById('productInfoModalTitle');
+    const productInfoModalImage = document.getElementById('productInfoModalImage');
+    const productInfoModalDescription = document.getElementById('productInfoModalDescription');
+    const productInfoModalQr = document.getElementById('productInfoModalQr');
+
+    document.querySelectorAll('.product-add-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const id = this.dataset.id;
             const name = this.dataset.name;
@@ -232,6 +268,23 @@
                 cart.push({ id, name, price, qty: 1 });
             }
             render();
+        });
+    });
+
+    document.querySelectorAll('.product-info-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const name = this.dataset.name;
+            const description = this.dataset.description || 'Sin descripción';
+            const image = this.dataset.image;
+            const url = this.dataset.url;
+            productInfoModalTitle.textContent = name;
+            productInfoModalDescription.textContent = description;
+            productInfoModalImage.src = image || '';
+            productInfoModalImage.style.display = image ? 'block' : 'none';
+            productInfoModalQr.src = 'https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=' + encodeURIComponent(url);
+            const modal = bootstrap.Modal.getOrCreateInstance(productInfoModal);
+            modal.show();
         });
     });
 
@@ -257,7 +310,7 @@
 
     document.getElementById('product-search').addEventListener('input', function() {
         const term = this.value.toLowerCase();
-        document.querySelectorAll('.product-item').forEach(item => {
+        document.querySelectorAll('.product-item-wrapper').forEach(item => {
             const text = item.textContent.toLowerCase();
             item.style.display = text.includes(term) ? '' : 'none';
         });

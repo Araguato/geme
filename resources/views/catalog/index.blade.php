@@ -31,8 +31,12 @@
         @foreach($products as $product)
             <div class="col-md-4 col-lg-3">
                 <div class="card h-100">
-                    @if($product->image_path)
-                        <img src="{{ asset('storage/' . $product->image_path) }}" class="card-img-top" alt="{{ $product->name }}" style="height: 160px; object-fit: cover;">
+                    @if($product->mainImage)
+                        <img src="{{ asset('storage/' . $product->mainImage->path) }}" class="card-img-top" alt="{{ $product->name }}" style="height: 200px; object-fit: cover;">
+                    @else
+                        <div class="card-img-top bg-secondary-subtle d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <i class="bi bi-image text-secondary fs-1"></i>
+                        </div>
                     @endif
                     <div class="card-body">
                         <h5 class="card-title">{{ $product->name }}</h5>

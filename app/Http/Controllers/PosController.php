@@ -116,7 +116,7 @@ class PosController extends Controller
 
         FiscalLedgerService::recordSale($order);
 
-        return redirect()->route('pos.ticket', $order)->with('success', 'Venta registrada correctamente.');
+        return redirect()->route('pos.index')->with('success', 'Venta registrada correctamente.');
     }
 
     public function ticket(Order $order)

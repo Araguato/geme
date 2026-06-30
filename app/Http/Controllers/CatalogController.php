@@ -16,6 +16,7 @@ class CatalogController extends Controller
 
         $query = Product::where('is_active', true)
             ->where('is_raw_material', false)
+            ->with(['mainImage', 'images'])
             ->when($categoryId, fn ($q) => $q->where('category_id', $categoryId))
             ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
             ->orderBy('name');
@@ -28,6 +29,7 @@ class CatalogController extends Controller
 
     public function show(Product $product)
     {
+        $product->load(['mainImage', 'images']);
         return view('catalog.show', compact('product'));
     }
 }

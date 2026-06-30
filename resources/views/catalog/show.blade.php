@@ -11,8 +11,8 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card">
-                @if($product->image_path)
-                    <img src="{{ asset('storage/' . $product->image_path) }}" class="card-img-top" alt="{{ $product->name }}" style="max-height: 300px; object-fit: cover;">
+                @if($product->mainImage)
+                    <img src="{{ asset('storage/' . $product->mainImage->path) }}" class="card-img-top" alt="{{ $product->name }}" style="max-height: 300px; object-fit: cover;">
                 @endif
                 <div class="card-body">
                     <h2 class="card-title">{{ $product->name }}</h2>
@@ -29,6 +29,17 @@
                     @if($product->sku)
                         <p class="text-muted mt-2">SKU: {{ $product->sku }}</p>
                     @endif
+
+                    @if($product->images->count() > 1)
+                        <div class="row g-2 mt-3">
+                            @foreach($product->images as $image)
+                                <div class="col-4 col-md-3">
+                                    <img src="{{ asset('storage/' . $image->path) }}" class="img-thumbnail w-100" style="height: 100px; object-fit: cover;" alt="">
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
                     <div class="d-flex justify-content-center my-3">
                         <div id="qrcode"></div>
                     </div>

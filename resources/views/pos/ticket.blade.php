@@ -44,10 +44,6 @@
                         <span>Total</span>
                         <span>$ {{ number_format($order->total, 2) }}</span>
                     </div>
-                    <div class="mt-4">
-                        <p class="small text-muted mb-2">Escanea para ver la descripción de la venta</p>
-                        <img src="https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl={{ urlencode(route('pos.ticket', $order)) }}" alt="Código QR" class="img-fluid">
-                    </div>
                 </div>
             </div>
         </div>
