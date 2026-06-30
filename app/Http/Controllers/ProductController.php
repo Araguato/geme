@@ -76,6 +76,8 @@ class ProductController extends Controller
             'cost' => 'nullable|numeric|min:0',
             'markup_percent' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
             'default_unit' => 'nullable|string|max:20',
             'stock_unit_id' => 'nullable|exists:units,id',
             'base_unit_id' => 'nullable|exists:units,id',
@@ -126,7 +128,10 @@ class ProductController extends Controller
         $barcodes = $data['barcodes'] ?? [];
         unset($data['barcodes']);
 
-        DB::transaction(function () use ($data, $barcodes) {
+        $uploadedImages = $request->file('images') ?? [];
+        $legacyImage = $request->file('image');
+
+        DB::transaction(function () use ($data, $barcodes, $uploadedImages, $legacyImage) {
             $product = Product::create($data);
 
             $rows = [];
@@ -145,6 +150,8 @@ class ProductController extends Controller
             if (count($rows) > 0) {
                 $product->barcodes()->createMany($rows);
             }
+
+            $this->storeProductImages($product, $uploadedImages, $legacyImage);
         });
 
         return redirect()->route('products.index');
@@ -238,6 +245,11 @@ class ProductController extends Controller
             'cost' => 'nullable|numeric|min:0',
             'markup_percent' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
+            'main_image_id' => 'nullable|exists:product_images,id',
+            'delete_images' => 'nullable|array',
+            'delete_images.*' => 'exists:product_images,id',
             'default_unit' => 'nullable|string|max:20',
             'stock_unit_id' => 'nullable|exists:units,id',
             'base_unit_id' => 'nullable|exists:units,id',
@@ -287,6 +299,11 @@ class ProductController extends Controller
         $barcodes = $data['barcodes'] ?? [];
         unset($data['barcodes']);
 
+        $uploadedImages = $request->file('images') ?? [];
+        $legacyImage = $request->file('image');
+        $mainImageId = $request->input('main_image_id');
+        $deleteImages = $request->input('delete_images', []);
+
         $before = $product->only([
             'category_id',
             'name',
@@ -301,7 +318,7 @@ class ProductController extends Controller
             'default_unit',
         ]);
 
-        DB::transaction(function () use ($product, $data, $barcodes) {
+        DB::transaction(function () use ($product, $data, $barcodes, $uploadedImages, $legacyImage, $mainImageId, $deleteImages) {
             $product->update($data);
 
             $rows = [];
@@ -321,6 +338,17 @@ class ProductController extends Controller
             if (count($rows) > 0) {
                 $product->barcodes()->createMany($rows);
             }
+
+            foreach ($deleteImages as $imageId) {
+                $image = $product->images()->find($imageId);
+                if ($image) {
+                    \Storage::disk('public')->delete($image->path);
+                    $image->delete();
+                }
+            }
+
+            $this->storeProductImages($product, $uploadedImages, $legacyImage);
+            $this->setMainImage($product, $mainImageId);
         });
 
         $after = $product->only([
@@ -351,6 +379,39 @@ class ProductController extends Controller
         ]);
 
         return redirect()->route('products.index');
+    }
+
+    private function storeProductImages(Product $product, array $uploadedImages, $legacyImage): void
+    {
+        $images = [];
+
+        if ($legacyImage) {
+            $images[] = $legacyImage;
+        }
+
+        foreach ($uploadedImages as $file) {
+            $images[] = $file;
+        }
+
+        foreach ($images as $index => $file) {
+            $path = $file->store('products', 'public');
+            $product->images()->create([
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'is_main' => $index === 0 && !$product->images()->where('is_main', true)->exists(),
+                'sort_order' => $product->images()->count() + $index,
+            ]);
+        }
+    }
+
+    private function setMainImage(Product $product, ?int $mainImageId): void
+    {
+        if (!$mainImageId) {
+            return;
+        }
+
+        $product->images()->update(['is_main' => false]);
+        $product->images()->where('id', $mainImageId)->update(['is_main' => true]);
     }
 
     private function syncLocationDetails(array $data): array

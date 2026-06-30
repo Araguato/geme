@@ -29,7 +29,16 @@
         <h5 class="card-title">Abrir turno de caja</h5>
         <form action="{{ route('cash-shifts.open') }}" method="POST" class="row g-3">
             @csrf
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <label class="form-label">Ubicación de venta</label>
+                <select name="sales_location_id" class="form-select" required>
+                    <option value="">Seleccione...</option>
+                    @foreach($salesLocations as $location)
+                        <option value="{{ $location->id }}">{{ $location->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label">Monto inicial en caja</label>
                 <input type="number" step="0.01" min="0" name="opening_amount" class="form-control" required>
             </div>
@@ -41,16 +50,21 @@
 </div>
 @else
 <div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">Cerrar turno de caja</h5>
+    <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="card-title mb-1">Turno abierto</h5>
+            <div class="small text-muted">
+                Ubicación: <strong>{{ $activeShift->salesLocation?->name ?? 'Sin ubicación' }}</strong>
+            </div>
+        </div>
         <form action="{{ route('cash-shifts.close') }}" method="POST" class="row g-3">
             @csrf
-            <div class="col-md-4">
+            <div class="col-auto">
                 <label class="form-label">Monto final en caja</label>
                 <input type="number" step="0.01" min="0" name="closing_amount" class="form-control" required>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-warning w-100">Cerrar caja</button>
+            <div class="col-auto d-flex align-items-end">
+                <button type="submit" class="btn btn-warning">Cerrar caja</button>
             </div>
         </form>
     </div>
@@ -69,12 +83,24 @@
                         <button type="button" class="list-group-item list-group-item-action product-item"
                                 data-id="{{ $product->id }}"
                                 data-name="{{ $product->name }}"
-                                data-price="{{ $product->price }}">
-                            <div class="d-flex justify-content-between">
-                                <span>{{ $product->name }}</span>
-                                <span>$ {{ number_format($product->price, 2) }}</span>
+                                data-price="{{ $product->price }}"
+                                data-image="{{ $product->mainImage ? asset('storage/' . $product->mainImage->path) : '' }}">
+                            <div class="d-flex align-items-center gap-3">
+                                @if($product->mainImage)
+                                    <img src="{{ asset('storage/' . $product->mainImage->path) }}" alt="" class="rounded" style="width: 64px; height: 64px; object-fit: cover;">
+                                @else
+                                    <div class="rounded bg-secondary-subtle d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                        <i class="bi bi-image text-secondary fs-4"></i>
+                                    </div>
+                                @endif
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-medium">{{ $product->name }}</span>
+                                        <span>$ {{ number_format($product->price, 2) }}</span>
+                                    </div>
+                                    <small class="text-muted">{{ $product->category?->name }}</small>
+                                </div>
                             </div>
-                            <small class="text-muted">{{ $product->category?->name }}</small>
                         </button>
                     @endforeach
                 </div>

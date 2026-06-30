@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\Party;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\SalesLocation;
 use App\Services\FiscalLedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,7 @@ class PosController extends Controller
         $activeShift = CashShift::where('is_active', true)->latest()->first();
         $products = Product::where('is_active', true)
             ->where('is_raw_material', false)
+            ->with(['images', 'mainImage'])
             ->orderBy('name')
             ->get();
 
@@ -29,7 +31,9 @@ class PosController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'document_number', 'document_type']);
 
-        return view('pos.index', compact('activeShift', 'products', 'customers'));
+        $salesLocations = SalesLocation::where('is_active', true)->orderBy('name')->get();
+
+        return view('pos.index', compact('activeShift', 'products', 'customers', 'salesLocations'));
     }
 
     public function store(Request $request)
@@ -52,6 +56,7 @@ class PosController extends Controller
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'user_id' => Auth::id(),
+                'sales_location_id' => $activeShift?->sales_location_id,
                 'customer_name' => $data['customer_name'] ?? null,
                 'customer_party_id' => $data['customer_party_id'] ?? null,
                 'type' => 'pos',
@@ -111,7 +116,13 @@ class PosController extends Controller
 
         FiscalLedgerService::recordSale($order);
 
-        return redirect()->route('pos.index')->with('success', 'Venta registrada correctamente.');
+        return redirect()->route('pos.ticket', $order)->with('success', 'Venta registrada correctamente.');
+    }
+
+    public function ticket(Order $order)
+    {
+        $order->load(['items.product', 'salesLocation', 'user']);
+        return view('pos.ticket', compact('order'));
     }
 
     private function generateOrderNumber(): string

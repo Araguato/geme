@@ -427,6 +427,9 @@
                                     <a class="dropdown-item" href="{{ route('login-logs.index') }}">Registro de logins</a>
                                 </li>
                                 <li>
+                                    <a class="dropdown-item" href="{{ route('sales-locations.index') }}">Ubicaciones de venta</a>
+                                </li>
+                                <li>
                                     <a class="dropdown-item" href="{{ route('settings.localization.edit') }}">{{ __('ui.nav.localization') }}</a>
                                 </li>
                                 <li>

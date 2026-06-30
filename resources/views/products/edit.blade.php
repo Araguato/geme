@@ -71,15 +71,40 @@
         <div id="location-details" class="mt-3 small text-muted" style="display: none;"></div>
     </div>
     <div class="mb-3" id="prod-image">
-        <label class="form-label">Imagen</label>
-        @if($product->image_path)
-            <div class="mb-2">
-                <img src="{{ asset('storage/' . $product->image_path) }}" alt="Imagen actual" style="max-height: 80px;">
-            </div>
-        @endif
+        <label class="form-label">Imagen principal</label>
         <input type="file" name="image" class="form-control" accept="image/*">
-        <div class="form-text">Opcional. Si subes una nueva imagen, reemplazará a la anterior.</div>
+        <div class="form-text">Opcional. Si subes una imagen, se agregará a la galería y se marcará como principal.</div>
     </div>
+    <div class="mb-3" id="prod-gallery">
+        <label class="form-label">Imágenes adicionales (galería)</label>
+        <input type="file" name="images[]" class="form-control" accept="image/*" multiple>
+        <div class="form-text">Puedes seleccionar varias imágenes. JPG, PNG o WEBP, máximo 5 MB cada una.</div>
+    </div>
+
+    @if($product->images->count() > 0)
+        <div class="mb-3 border rounded p-3">
+            <label class="form-label d-block">Galería actual</label>
+            <div class="row g-3">
+                @foreach($product->images as $image)
+                    <div class="col-md-3 col-sm-4">
+                        <div class="card h-100">
+                            <img src="{{ asset('storage/' . $image->path) }}" class="card-img-top" style="height: 120px; object-fit: cover;" alt="">
+                            <div class="card-body p-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="main_image_id" id="main_{{ $image->id }}" value="{{ $image->id }}" {{ $image->is_main ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="main_{{ $image->id }}">Principal</label>
+                                </div>
+                                <div class="form-check mt-1">
+                                    <input class="form-check-input" type="checkbox" name="delete_images[]" id="delete_{{ $image->id }}" value="{{ $image->id }}">
+                                    <label class="form-check-label text-danger" for="delete_{{ $image->id }}">Eliminar</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
     <div class="border rounded p-3 mb-3" id="prod-pricing">
         <h5 class="mb-3">Precio &amp; Impuestos</h5>
         <div class="row g-3">

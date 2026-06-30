@@ -36,6 +36,7 @@ use App\Http\Controllers\PayrollEntryController;
 use App\Http\Controllers\PublicOrderController;
 use App\Http\Controllers\CustomerRegistrationController;
 use App\Http\Controllers\LoginLogController;
+use App\Http\Controllers\SalesLocationController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
@@ -62,6 +63,9 @@ Route::post('registro-cliente', [CustomerRegistrationController::class, 'store']
 
 // Registro de logins (solo admin)
 Route::middleware('auth')->get('admin/login-logs', [LoginLogController::class, 'index'])->name('login-logs.index');
+
+// Ubicaciones de venta (admin)
+Route::middleware('auth')->resource('admin/sales-locations', SalesLocationController::class)->names('sales-locations');
 
 // Pedidos en línea (solo usuarios autenticados, se cobra al retirar / en entrega)
 Route::middleware('auth')->group(function () {
@@ -206,6 +210,7 @@ Route::middleware('auth')->group(function () {
     // TPV / Punto de venta
     Route::get('pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('pos', [PosController::class, 'store'])->name('pos.store');
+    Route::get('pos/ticket/{order}', [PosController::class, 'ticket'])->name('pos.ticket');
     Route::post('cash-shifts/open', [CashShiftController::class, 'open'])->name('cash-shifts.open');
     Route::post('cash-shifts/close', [CashShiftController::class, 'close'])->name('cash-shifts.close');
 

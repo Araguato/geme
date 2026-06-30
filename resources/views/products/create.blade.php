@@ -71,9 +71,14 @@
         <div id="location-details" class="mt-3 small text-muted" style="display: none;"></div>
     </div>
     <div class="mb-3" id="prod-image">
-        <label class="form-label">Imagen</label>
+        <label class="form-label">Imagen principal</label>
         <input type="file" name="image" class="form-control" accept="image/*">
-        <div class="form-text">Opcional. JPG, PNG o WEBP, máximo 2 MB.</div>
+        <div class="form-text">Opcional. JPG, PNG o WEBP, máximo 5 MB.</div>
+    </div>
+    <div class="mb-3" id="prod-gallery">
+        <label class="form-label">Imágenes adicionales (galería)</label>
+        <input type="file" name="images[]" class="form-control" accept="image/*" multiple>
+        <div class="form-text">Puedes seleccionar varias imágenes. JPG, PNG o WEBP, máximo 5 MB cada una.</div>
     </div>
     <div class="border rounded p-3 mb-3" id="prod-pricing">
         <h5 class="mb-3">Precio &amp; Impuestos</h5>

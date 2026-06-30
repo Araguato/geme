@@ -11,6 +11,7 @@ class CashShift extends Model
 
     protected $fillable = [
         'user_id',
+        'sales_location_id',
         'opened_at',
         'closed_at',
         'opening_amount',
@@ -26,6 +27,11 @@ class CashShift extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function salesLocation()
+    {
+        return $this->belongsTo(SalesLocation::class);
     }
 
     public function orders()

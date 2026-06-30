@@ -29,6 +29,7 @@ class Order extends Model
         'notes',
         'delivery_info_id',
         'cash_shift_id',
+        'sales_location_id',
     ];
 
     protected $casts = [
@@ -64,6 +65,11 @@ class Order extends Model
     public function cashShift()
     {
         return $this->belongsTo(CashShift::class);
+    }
+
+    public function salesLocation()
+    {
+        return $this->belongsTo(SalesLocation::class);
     }
 
     public function creditNotes()
