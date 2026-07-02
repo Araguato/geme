@@ -94,6 +94,7 @@
                                         data-description="{{ $product->description }}"
                                         data-price="{{ $product->price }}"
                                         data-image="{{ $product->mainImage ? asset('storage/' . $product->mainImage->path) : '' }}"
+                                        data-images="{{ $product->images->map(fn($img) => asset('storage/' . $img->path))->toJson() }}"
                                         data-url="{{ route('catalog.show', $product) }}"
                                         title="Ver información y QR">
                                     @if($product->mainImage)
@@ -200,6 +201,7 @@
             </div>
             <div class="modal-body text-center">
                 <img id="productInfoModalImage" src="" alt="" class="img-fluid rounded mb-3" style="max-height: 220px; object-fit: cover;">
+                <div id="productInfoModalGallery" class="d-flex justify-content-center gap-2 flex-wrap mb-3"></div>
                 <p id="productInfoModalDescription" class="text-muted"></p>
                 <div class="mt-3">
                     <p class="small text-muted mb-2">Escanea para ver la ficha del producto</p>
@@ -259,6 +261,7 @@
     const productInfoModal = document.getElementById('productInfoModal');
     const productInfoModalTitle = document.getElementById('productInfoModalTitle');
     const productInfoModalImage = document.getElementById('productInfoModalImage');
+    const productInfoModalGallery = document.getElementById('productInfoModalGallery');
     const productInfoModalDescription = document.getElementById('productInfoModalDescription');
     const productInfoModalQr = document.getElementById('productInfoModalQr');
 
@@ -283,11 +286,30 @@
             const name = this.dataset.name;
             const description = this.dataset.description || 'Sin descripción';
             const image = this.dataset.image;
+            const images = JSON.parse(this.dataset.images || '[]');
             const url = this.dataset.url;
             productInfoModalTitle.textContent = name;
             productInfoModalDescription.textContent = description;
             productInfoModalImage.src = image || '';
             productInfoModalImage.style.display = image ? 'block' : 'none';
+
+            productInfoModalGallery.innerHTML = '';
+            images.forEach(src => {
+                const thumb = document.createElement('img');
+                thumb.src = src;
+                thumb.className = 'rounded';
+                thumb.style.width = '70px';
+                thumb.style.height = '70px';
+                thumb.style.objectFit = 'cover';
+                thumb.style.cursor = 'pointer';
+                thumb.addEventListener('click', function() {
+                    productInfoModalImage.src = src;
+                    productInfoModalImage.style.display = 'block';
+                });
+                productInfoModalGallery.appendChild(thumb);
+            });
+            productInfoModalGallery.style.display = images.length > 1 ? 'flex' : 'none';
+
             productInfoModalQr.src = 'https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=' + encodeURIComponent(url);
             const modal = bootstrap.Modal.getOrCreateInstance(productInfoModal);
             modal.show();

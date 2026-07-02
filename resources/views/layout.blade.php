@@ -304,13 +304,18 @@
                 </li>
                 @auth
                     @php($user = auth()->user())
+                    @php($isAdmin = $user->hasRole('admin'))
+                    @php($isSupervisor = $user->hasRole('supervisor'))
+                    @php($isCajero = $user->hasRole('cajero'))
+                    @php($isVendedor = $user->hasRole('vendedor'))
+                    @php($isAlmacenista = $user->hasRole('almacenista'))
+                    @php($isDespachador = $user->hasRole('despachador'))
+                    @php($isStaff = $isAdmin || $isSupervisor || $isCajero || $isVendedor || $isAlmacenista || $isDespachador)
                     @php($financesEnabled = (bool) \App\Models\Setting::get('finances_enabled', 0))
 
-                    @if($user->hasRole('admin'))
-                        {{-- Enlaces operativos visibles para admin --}}
-
-                        @if($financesEnabled)
-                            {{-- Menú Finanzas --}}
+                    @if($isStaff)
+                        {{-- Menú Finanzas: admin y supervisor --}}
+                        @if($financesEnabled && ($isAdmin || $isSupervisor))
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="financesDropdown" role="button"
                                    data-bs-toggle="dropdown" aria-expanded="false">
@@ -349,143 +354,137 @@
                             </li>
                         @endif
 
-                        {{-- Ventas / TPV --}}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="salesDropdown" role="button"
-                               data-bs-toggle="dropdown" aria-expanded="false">
-                                Ventas
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="salesDropdown">
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('pos.index') }}">TPV / Punto de venta</a>
-                                </li>
-                            </ul>
-                        </li>
+                        {{-- Menú Ventas: admin, cajero, vendedor, supervisor --}}
+                        @if($isAdmin || $isCajero || $isVendedor || $isSupervisor)
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="salesDropdown" role="button"
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    Ventas
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="salesDropdown">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('pos.index') }}">TPV / Punto de venta</a>
+                                    </li>
+                                </ul>
+                            </li>
+                        @endif
 
-                        {{-- Inventario principal --}}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="inventoryDropdown" role="button"
-                               data-bs-toggle="dropdown" aria-expanded="false">
-                                Inventario
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="inventoryDropdown">
-                                <li class="px-3 text-muted small">Depósitos</li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('warehouses.index') }}">Sitios / Depósitos</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('locations.index') }}">Ubicaciones</a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li class="px-3 text-muted small">Stock</li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('stock.index') }}">{{ __('ui.layout.current_stock') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('stock.adjust.form') }}">{{ __('ui.layout.inventory_adjustments') }}</a>
-                                </li>
-                            </ul>
-                        </li>
+                        {{-- Menú Inventario: admin, almacenista, vendedor (consulta), supervisor --}}
+                        @if($isAdmin || $isAlmacenista || $isVendedor || $isSupervisor || $isDespachador)
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="inventoryDropdown" role="button"
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    Inventario
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="inventoryDropdown">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('products.search') }}">Buscar productos</a>
+                                    </li>
+                                    @if($isAdmin || $isAlmacenista || $isSupervisor)
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li class="px-3 text-muted small">Catálogos</li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('categories.index') }}">{{ __('ui.nav.categories') }}</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('products.index') }}">{{ __('ui.nav.products') }}</a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li class="px-3 text-muted small">Depósitos</li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('warehouses.index') }}">Sitios / Depósitos</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('locations.index') }}">Ubicaciones</a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li class="px-3 text-muted small">Stock</li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('stock.index') }}">{{ __('ui.layout.current_stock') }}</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('stock.adjust.form') }}">{{ __('ui.layout.inventory_adjustments') }}</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('unit-conversions.index') }}">Conversiones de unidades</a>
+                                        </li>
+                                    @endif
+                                </ul>
+                            </li>
+                        @endif
 
-                        {{-- Nómina --}}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="payrollDropdown" role="button"
-                               data-bs-toggle="dropdown" aria-expanded="false">
-                                Nómina
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="payrollDropdown">
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('payroll-periods.index') }}">{{ __('ui.nav.payroll_periods') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('payroll-runs.index') }}">{{ __('ui.nav.payroll_runs') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('payroll-entries.index') }}">{{ __('ui.nav.payroll_entries') }}</a>
-                                </li>
-                            </ul>
-                        </li>
+                        {{-- Menú Nómina: admin y supervisor --}}
+                        @if($isAdmin || $isSupervisor)
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="payrollDropdown" role="button"
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    Nómina
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="payrollDropdown">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('payroll-periods.index') }}">{{ __('ui.nav.payroll_periods') }}</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('payroll-runs.index') }}">{{ __('ui.nav.payroll_runs') }}</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('payroll-entries.index') }}">{{ __('ui.nav.payroll_entries') }}</a>
+                                    </li>
+                                </ul>
+                            </li>
+                        @endif
 
-                        {{-- Dropdown de administración solo para admin --}}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button"
-                               data-bs-toggle="dropdown" aria-expanded="false">
-                                {{ __('ui.nav.admin') }}
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                                {{-- Administración / configuración --}}
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('dashboard') }}">{{ __('ui.nav.dashboard') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('help.index') }}">{{ __('ui.nav.help_center') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('users.index') }}">{{ __('ui.nav.users') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('login-logs.index') }}">Registro de logins</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('sales-locations.index') }}">Ubicaciones de venta</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('settings.localization.edit') }}">{{ __('ui.nav.localization') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('settings.appearance.edit') }}">{{ __('ui.nav.appearance') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('settings.finances.edit') }}">{{ __('ui.nav.finances_settings') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('settings.company.edit') }}">Datos fiscales (SENIAT)</a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-
-                                {{-- Inventario --}}
-                                <li class="px-3 text-muted small">Inventario</li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('categories.index') }}">{{ __('ui.nav.categories') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('products.index') }}">{{ __('ui.nav.products') }}</a>
-                                </li>
-                                <li class="px-3 text-muted small">{{ __('ui.layout.inventory_recipes') }}</li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('stock.index') }}">{{ __('ui.layout.current_stock') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('stock.index') }}">{{ __('ui.layout.movements_kardex') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('stock.adjust.form') }}">{{ __('ui.layout.inventory_adjustments') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('unit-conversions.index') }}">Conversiones de unidades</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('products.index') }}">{{ __('ui.layout.recipes_by_product') }}</a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                {{-- Personas --}}
-                                <li class="px-3 text-muted small">{{ __('ui.layout.people') }}</li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('suppliers.index') }}">{{ __('ui.layout.suppliers') }}</a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('employees.index') }}">{{ __('ui.layout.employees') }}</a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-
-                                {{-- Administración avanzada --}}
-                                <li class="px-3 text-muted small">{{ __('ui.layout.admin_section') }}</li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('backup.database') }}">{{ __('ui.layout.backup_db') }}</a>
-                                </li>
-                            </ul>
-                        </li>
-
+                        {{-- Menú Administración: solo admin --}}
+                        @if($isAdmin)
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button"
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    {{ __('ui.nav.admin') }}
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('dashboard') }}">{{ __('ui.nav.dashboard') }}</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('help.index') }}">{{ __('ui.nav.help_center') }}</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('users.index') }}">{{ __('ui.nav.users') }}</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('login-logs.index') }}">Registro de logins</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('sales-locations.index') }}">Ubicaciones de venta</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('settings.localization.edit') }}">{{ __('ui.nav.localization') }}</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('settings.appearance.edit') }}">{{ __('ui.nav.appearance') }}</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('settings.finances.edit') }}">{{ __('ui.nav.finances_settings') }}</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('settings.company.edit') }}">Datos fiscales (SENIAT)</a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="px-3 text-muted small">{{ __('ui.layout.people') }}</li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('suppliers.index') }}">{{ __('ui.layout.suppliers') }}</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('employees.index') }}">{{ __('ui.layout.employees') }}</a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="px-3 text-muted small">{{ __('ui.layout.admin_section') }}</li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('backup.database') }}">{{ __('ui.layout.backup_db') }}</a>
+                                    </li>
+                                </ul>
+                            </li>
+                        @endif
                     @endif
                 @endauth
             </ul>

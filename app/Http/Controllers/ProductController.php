@@ -48,6 +48,33 @@ class ProductController extends Controller
         return view('products.index', compact('products', 'categories', 'selectedCategoryId', 'search'));
     }
 
+    public function search(Request $request)
+    {
+        $search = $request->query('search');
+
+        $query = Product::with(['category', 'barcodes', 'mainImage', 'images'])
+            ->where('is_active', true)
+            ->orderBy('name');
+
+        if ($search) {
+            $searchTerm = trim($search);
+            if ($searchTerm !== '') {
+                $query->where(function ($q) use ($searchTerm) {
+                    $like = '%' . $searchTerm . '%';
+                    $q->where('name', 'like', $like)
+                        ->orWhere('sku', 'like', $like)
+                        ->orWhereHas('barcodes', function ($qb) use ($like) {
+                            $qb->where('barcode', 'like', $like);
+                        });
+                });
+            }
+        }
+
+        $products = $query->limit(50)->get();
+
+        return view('products.search', compact('products', 'search'));
+    }
+
     public function create()
     {
         $categories = Category::orderBy('name')->get();
