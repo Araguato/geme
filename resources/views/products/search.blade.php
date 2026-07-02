@@ -55,9 +55,14 @@
                             </div>
                         @endif
 
+                        @php
+                            $lookupUrl = $product->barcodes->first()
+                                ? route('catalog.showByBarcode', $product->barcodes->first()->barcode)
+                                : route('catalog.show', $product);
+                        @endphp
                         <div class="mt-3 text-center">
                             <p class="small text-muted mb-1">Escanea para ver la ficha</p>
-                            <img src="https://chart.googleapis.com/chart?cht=qr&chs=150x150&chl={{ urlencode(route('catalog.show', $product)) }}" alt="QR" class="img-fluid">
+                            <img src="https://chart.googleapis.com/chart?cht=qr&chs=150x150&chl={{ urlencode($lookupUrl) }}" alt="QR" class="img-fluid">
                         </div>
                     </div>
                 </div>

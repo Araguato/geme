@@ -32,4 +32,18 @@ class CatalogController extends Controller
         $product->load(['mainImage', 'images']);
         return view('catalog.show', compact('product'));
     }
+
+    public function showByBarcode(string $barcode)
+    {
+        $product = Product::where('is_active', true)
+            ->whereHas('barcodes', fn ($q) => $q->where('barcode', $barcode))
+            ->with(['mainImage', 'images'])
+            ->first();
+
+        if (! $product) {
+            abort(404, 'Producto no encontrado');
+        }
+
+        return view('catalog.show', compact('product'));
+    }
 }

@@ -95,6 +95,7 @@
                                         data-price="{{ $product->price }}"
                                         data-image="{{ $product->mainImage ? asset('storage/' . $product->mainImage->path) : '' }}"
                                         data-images="{{ $product->images->map(fn($img) => asset('storage/' . $img->path))->toJson() }}"
+                                        data-barcode="{{ $product->barcodes->first()?->barcode }}"
                                         data-url="{{ route('catalog.show', $product) }}"
                                         title="Ver información y QR">
                                     @if($product->mainImage)
@@ -287,7 +288,10 @@
             const description = this.dataset.description || 'Sin descripción';
             const image = this.dataset.image;
             const images = JSON.parse(this.dataset.images || '[]');
-            const url = this.dataset.url;
+            let url = this.dataset.url;
+            if (this.dataset.barcode) {
+                url = '{{ url('catalogo/barcode') }}/' + encodeURIComponent(this.dataset.barcode);
+            }
             productInfoModalTitle.textContent = name;
             productInfoModalDescription.textContent = description;
             productInfoModalImage.src = image || '';

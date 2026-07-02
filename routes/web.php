@@ -46,6 +46,7 @@ Route::get('/', function () {
 
 // Catálogo público para clientes
 Route::get('catalogo', [CatalogController::class, 'index'])->name('catalog.index');
+Route::get('catalogo/barcode/{barcode}', [CatalogController::class, 'showByBarcode'])->name('catalog.showByBarcode');
 Route::get('catalogo/{product}', [CatalogController::class, 'show'])->name('catalog.show');
 
 // Páginas legales
