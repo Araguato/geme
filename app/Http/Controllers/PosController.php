@@ -33,7 +33,28 @@ class PosController extends Controller
 
         $salesLocations = SalesLocation::where('is_active', true)->orderBy('name')->get();
 
-        return view('pos.index', compact('activeShift', 'products', 'customers', 'salesLocations'));
+        $paymentSummary = [];
+        $casheaInitial = 0;
+        $casheaFinanced = 0;
+        $totalReceived = 0;
+        if ($activeShift) {
+            $payments = Payment::where('cash_shift_id', $activeShift->id)->get();
+            foreach ($payments as $payment) {
+                $method = $payment->method;
+                $amount = (float) $payment->amount;
+                $paymentSummary[$method] = ($paymentSummary[$method] ?? 0) + $amount;
+                $totalReceived += $amount;
+                if ($method === 'cashea') {
+                    $casheaInitial += $amount;
+                    $casheaFinanced += (float) ($payment->cashea_financed_amount ?? 0);
+                }
+            }
+        }
+
+        return view('pos.index', compact(
+            'activeShift', 'products', 'customers', 'salesLocations',
+            'paymentSummary', 'casheaInitial', 'casheaFinanced', 'totalReceived'
+        ));
     }
 
     public function store(Request $request)
@@ -45,14 +66,18 @@ class PosController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|numeric|min:0.001',
             'items.*.unit_price' => 'required|numeric|min:0',
-            'payment.method' => 'required|in:cash,card,transfer,other',
+            'payment.method' => 'required|in:cash,card,transfer,pagomovil,punto,cashea,other',
             'payment.amount' => 'required|numeric|min:0',
             'payment.reference' => 'nullable|string|max:255',
+            'payment.cashea_initial_percentage' => 'required_if:payment.method,cashea|numeric|min:0|max:100',
         ]);
+
+        $isCashea = $data['payment']['method'] === 'cashea';
+        $orderTotal = 0;
 
         $activeShift = CashShift::where('is_active', true)->latest()->first();
 
-        $order = DB::transaction(function () use ($data, $activeShift) {
+        $order = DB::transaction(function () use ($data, $activeShift, $isCashea) {
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'user_id' => Auth::id(),
@@ -103,13 +128,24 @@ class PosController extends Controller
                 'total' => $total,
             ]);
 
-            Payment::create([
+            $paymentData = [
                 'order_id' => $order->id,
                 'cash_shift_id' => $activeShift?->id,
                 'method' => $data['payment']['method'],
                 'amount' => $data['payment']['amount'],
                 'reference' => $data['payment']['reference'] ?? null,
-            ]);
+            ];
+
+            if ($isCashea) {
+                $percentage = (float) ($data['payment']['cashea_initial_percentage'] ?? 0);
+                $initialAmount = round($total * ($percentage / 100), 2);
+                $financedAmount = round($total - $initialAmount, 2);
+                $paymentData['amount'] = $initialAmount;
+                $paymentData['cashea_initial_percentage'] = $percentage;
+                $paymentData['cashea_financed_amount'] = $financedAmount;
+            }
+
+            Payment::create($paymentData);
 
             return $order;
         });

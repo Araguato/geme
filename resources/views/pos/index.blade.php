@@ -56,23 +56,68 @@
 </div>
 @else
 <div class="card mb-4">
-    <div class="card-body d-flex justify-content-between align-items-center">
-        <div>
-            <h5 class="card-title mb-1">Turno abierto</h5>
-            <div class="small text-body-secondary">
-                Ubicación: <strong>{{ $activeShift->salesLocation?->name ?? 'Sin ubicación' }}</strong>
+    <div class="card-body">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+            <div>
+                <h5 class="card-title mb-1">Turno abierto</h5>
+                <div class="small text-body-secondary">
+                    Ubicación: <strong>{{ $activeShift->salesLocation?->name ?? 'Sin ubicación' }}</strong>
+                </div>
             </div>
+            <form action="{{ route('cash-shifts.close') }}" method="POST" class="row g-3">
+                @csrf
+                <div class="col-auto">
+                    <label class="form-label">Monto final en caja</label>
+                    <input type="number" step="0.01" min="0" name="closing_amount" class="form-control" required>
+                </div>
+                <div class="col-auto d-flex align-items-end">
+                    <button type="submit" class="btn btn-warning">Cerrar caja</button>
+                </div>
+            </form>
         </div>
-        <form action="{{ route('cash-shifts.close') }}" method="POST" class="row g-3">
-            @csrf
-            <div class="col-auto">
-                <label class="form-label">Monto final en caja</label>
-                <input type="number" step="0.01" min="0" name="closing_amount" class="form-control" required>
+
+        @if($totalReceived > 0 || $casheaFinanced > 0)
+            <hr>
+            <h6 class="mb-2">Desglose de ingresos del turno</h6>
+            <div class="row g-2 small">
+                <div class="col-6 col-md-3">
+                    <div class="p-2 rounded border" style="background: rgba(0,0,0,0.03);">
+                        <div class="text-body-secondary">Dólares físicos</div>
+                        <div class="fw-semibold">$ {{ number_format($paymentSummary['cash'] ?? 0, 2) }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-2 rounded border" style="background: rgba(0,0,0,0.03);">
+                        <div class="text-body-secondary">Punto</div>
+                        <div class="fw-semibold">$ {{ number_format(($paymentSummary['card'] ?? 0) + ($paymentSummary['punto'] ?? 0), 2) }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-2 rounded border" style="background: rgba(0,0,0,0.03);">
+                        <div class="text-body-secondary">PagoMóvil</div>
+                        <div class="fw-semibold">$ {{ number_format(($paymentSummary['pagomovil'] ?? 0) + ($paymentSummary['transfer'] ?? 0), 2) }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-2 rounded border" style="background: rgba(0,0,0,0.03);">
+                        <div class="text-body-secondary">Cashea inicial</div>
+                        <div class="fw-semibold">$ {{ number_format($casheaInitial, 2) }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-2 rounded border" style="background: rgba(0,0,0,0.03);">
+                        <div class="text-body-secondary">Cashea financiado</div>
+                        <div class="fw-semibold">$ {{ number_format($casheaFinanced, 2) }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="p-2 rounded border" style="background: rgba(0,0,0,0.05);">
+                        <div class="text-body-secondary">Total recibido</div>
+                        <div class="fw-bold">$ {{ number_format($totalReceived, 2) }}</div>
+                    </div>
+                </div>
             </div>
-            <div class="col-auto d-flex align-items-end">
-                <button type="submit" class="btn btn-warning">Cerrar caja</button>
-            </div>
-        </form>
+        @endif
     </div>
 </div>
 @endif
@@ -170,10 +215,12 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label">Método de pago</label>
-                            <select name="payment[method]" class="form-select" required>
-                                <option value="cash">Efectivo</option>
-                                <option value="card">Tarjeta</option>
+                            <select name="payment[method]" class="form-select" id="payment-method" required>
+                                <option value="cash">Efectivo / Dólares físicos</option>
+                                <option value="card">Punto de venta</option>
+                                <option value="pagomovil">PagoMóvil</option>
                                 <option value="transfer">Transferencia</option>
+                                <option value="cashea">Cashea</option>
                                 <option value="other">Otro</option>
                             </select>
                         </div>
@@ -181,7 +228,11 @@
                             <label class="form-label">Monto pagado</label>
                             <input type="number" step="0.01" min="0" name="payment[amount]" id="payment-amount" class="form-control" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-4 d-none" id="cashea-percentage-wrapper">
+                            <label class="form-label">Inicial Cashea (%)</label>
+                            <input type="number" step="0.01" min="0" max="100" name="payment[cashea_initial_percentage]" id="cashea-initial-percentage" class="form-control" placeholder="Ej: 25">
+                        </div>
+                        <div class="col-md-4" id="payment-reference-wrapper">
                             <label class="form-label">Referencia</label>
                             <input type="text" name="payment[reference]" class="form-control" placeholder="Número de operación">
                         </div>
@@ -358,6 +409,37 @@
     const customerSelect = document.getElementById('customer-select');
     const customerNameInput = document.getElementById('customer-name-input');
     const customerRifText = document.getElementById('customer-rif-text');
+    const paymentMethod = document.getElementById('payment-method');
+    const casheaWrapper = document.getElementById('cashea-percentage-wrapper');
+    const casheaPercentage = document.getElementById('cashea-initial-percentage');
+    const referenceWrapper = document.getElementById('payment-reference-wrapper');
+
+    function updateCasheaFields() {
+        const isCashea = paymentMethod.value === 'cashea';
+        casheaWrapper.classList.toggle('d-none', !isCashea);
+        casheaPercentage.required = isCashea;
+        referenceWrapper.classList.toggle('d-none', isCashea);
+        if (isCashea) {
+            casheaPercentage.value = casheaPercentage.value || '';
+            paymentAmount.readOnly = true;
+            updateCasheaAmount();
+        } else {
+            paymentAmount.readOnly = false;
+            paymentAmount.value = parseFloat(totalEl.textContent.replace('$', '').replace(',', '')).toFixed(2);
+        }
+    }
+
+    function updateCasheaAmount() {
+        if (paymentMethod.value !== 'cashea') return;
+        const total = parseFloat(totalEl.textContent.replace('$', '').replace(',', '')) || 0;
+        const percentage = parseFloat(casheaPercentage.value) || 0;
+        const initial = Math.round(total * (percentage / 100) * 100) / 100;
+        paymentAmount.value = initial.toFixed(2);
+    }
+
+    paymentMethod.addEventListener('change', updateCasheaFields);
+    casheaPercentage.addEventListener('input', updateCasheaAmount);
+    updateCasheaFields();
 
     function updateCustomerInfo() {
         const option = customerSelect.options[customerSelect.selectedIndex];

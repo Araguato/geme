@@ -15,6 +15,8 @@ class Payment extends Model
         'method',
         'amount',
         'reference',
+        'cashea_initial_percentage',
+        'cashea_financed_amount',
     ];
 
     public function order()
