@@ -481,4 +481,58 @@ class ProductController extends Controller
                 ->with('error', 'No se pudo eliminar el producto porque existen registros asociados (recetas, inventario o compras). Puede desactivarlo en lugar de eliminarlo.');
         }
     }
+
+    public function bulkPriceEdit(Request $request)
+    {
+        $categoryId = $request->query('category_id');
+        $categories = Category::orderBy('name')->get();
+
+        $query = Product::where('is_active', true);
+        if ($categoryId) {
+            $query->where('category_id', $categoryId);
+        }
+
+        $stats = $query->clone()
+            ->selectRaw('COUNT(*) as count, MIN(price) as min_price, MAX(price) as max_price, AVG(price) as avg_price')
+            ->first();
+
+        $products = $query->orderBy('name')->limit(50)->get(['id', 'name', 'sku', 'price']);
+
+        return view('products.prices.edit', compact('categories', 'categoryId', 'stats', 'products'));
+    }
+
+    public function bulkPriceUpdate(Request $request)
+    {
+        $data = $request->validate([
+            'percentage' => 'required|numeric',
+            'category_id' => 'nullable|exists:categories,id',
+            'round_to' => 'nullable|in:0.01,0.05,0.10,0.25,0.50,1.00',
+        ]);
+
+        $percentage = (float) $data['percentage'];
+        $factor = 1 + ($percentage / 100);
+        $roundTo = isset($data['round_to']) ? (float) $data['round_to'] : null;
+
+        $query = Product::where('is_active', true);
+        if (!empty($data['category_id'])) {
+            $query->where('category_id', $data['category_id']);
+        }
+
+        $count = 0;
+        $query->chunkById(100, function ($products) use ($factor, $roundTo, &$count) {
+            foreach ($products as $product) {
+                $newPrice = $product->price * $factor;
+                if ($roundTo !== null && $roundTo > 0) {
+                    $newPrice = round($newPrice / $roundTo) * $roundTo;
+                }
+                $newPrice = max(0, round($newPrice, 2));
+                $product->update(['price' => $newPrice]);
+                $count++;
+            }
+        });
+
+        return redirect()
+            ->route('products.prices.edit')
+            ->with('success', "Precios actualizados: {$count} productos afectados con un ajuste del {$percentage}%.");
+    }
 }

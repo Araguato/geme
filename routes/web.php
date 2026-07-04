@@ -115,6 +115,8 @@ Route::middleware('auth')->group(function () {
     // Catálogo y configuración
     Route::resource('categories', CategoryController::class)->except(['show']);
     Route::get('products/search', [ProductController::class, 'search'])->name('products.search');
+    Route::get('products/prices/edit', [ProductController::class, 'bulkPriceEdit'])->name('products.prices.edit');
+    Route::post('products/prices/update', [ProductController::class, 'bulkPriceUpdate'])->name('products.prices.update');
     Route::resource('products', ProductController::class)->except(['show']);
     Route::get('products/{product}/label', [ProductController::class, 'label'])->name('products.label');
     Route::get('products/labels/bulk', [ProductController::class, 'bulkLabels'])->name('products.labels.bulk');

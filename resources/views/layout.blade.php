@@ -390,6 +390,9 @@
                                         <li>
                                             <a class="dropdown-item" href="{{ route('products.index') }}">{{ __('ui.nav.products') }}</a>
                                         </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('products.prices.edit') }}">Actualizar precios</a>
+                                        </li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li class="px-3 text-muted small">Depósitos</li>
                                         <li>
