@@ -22,12 +22,12 @@
                     @endif
                     @if($product->description_zh)
                         <div class="border-start border-3 ps-3 mt-3">
-                            <p class="text-muted mb-1">Descripción en chino:</p>
+                            <p class="text-body-secondary mb-1">Descripción en chino:</p>
                             <p class="card-text">{{ $product->description_zh }}</p>
                         </div>
                     @endif
                     @if($product->sku)
-                        <p class="text-muted mt-2">SKU: {{ $product->sku }}</p>
+                        <p class="text-body-secondary mt-2">SKU: {{ $product->sku }}</p>
                     @endif
 
                     @if($product->images->count() > 1)
@@ -43,7 +43,7 @@
                     <div class="d-flex justify-content-center my-3">
                         <div id="qrcode"></div>
                     </div>
-                    <p class="text-center text-muted small">Escanea este QR para compartir el producto</p>
+                    <p class="text-center text-body-secondary small">Escanea este QR para compartir el producto</p>
                     <a href="{{ route('catalog.index') }}" class="btn btn-outline-secondary">Volver al catálogo</a>
                 </div>
             </div>

@@ -59,7 +59,7 @@
     <div class="card-body d-flex justify-content-between align-items-center">
         <div>
             <h5 class="card-title mb-1">Turno abierto</h5>
-            <div class="small text-muted">
+            <div class="small text-body-secondary">
                 Ubicación: <strong>{{ $activeShift->salesLocation?->name ?? 'Sin ubicación' }}</strong>
             </div>
         </div>
@@ -114,7 +114,7 @@
                                         <span class="fw-medium">{{ $product->name }}</span>
                                         <span>$ {{ number_format($product->price, 2) }}</span>
                                     </div>
-                                    <small class="text-muted">{{ $product->category?->name }}</small>
+                                    <small class="text-body-secondary">{{ $product->category?->name }}</small>
                                 </button>
                             </div>
                         </div>
@@ -157,7 +157,7 @@
                         </thead>
                         <tbody>
                             <tr id="empty-row">
-                                <td colspan="5" class="text-center text-muted">Agrega productos</td>
+                                <td colspan="5" class="text-center text-body-secondary">Agrega productos</td>
                             </tr>
                         </tbody>
                     </table>
@@ -203,9 +203,9 @@
             <div class="modal-body text-center">
                 <img id="productInfoModalImage" src="" alt="" class="img-fluid rounded mb-3" style="max-height: 220px; object-fit: cover;">
                 <div id="productInfoModalGallery" class="d-flex justify-content-center gap-2 flex-wrap mb-3"></div>
-                <p id="productInfoModalDescription" class="text-muted"></p>
+                <p id="productInfoModalDescription" class="text-body-secondary"></p>
                 <div class="mt-3">
-                    <p class="small text-muted mb-2">Escanea para ver la ficha del producto</p>
+                    <p class="small text-body-secondary mb-2">Escanea para ver la ficha del producto</p>
                     <img id="productInfoModalQr" src="" alt="Código QR" class="img-fluid">
                 </div>
             </div>

@@ -73,7 +73,7 @@
     </main>
 
     <footer class="bg-light border-top py-4 mt-auto">
-        <div class="container text-center text-muted">
+        <div class="container text-center text-dark">
             <p class="mb-1">&copy; {{ date('Y') }} {{ $companyName }}</p>
             <p class="small mb-0">RIF {{ \App\Models\Setting::get('company_tax_id', '') }}</p>
         </div>

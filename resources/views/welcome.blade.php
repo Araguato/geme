@@ -74,14 +74,14 @@
                         <div class="card h-100 product-card">
                             <div class="card-body">
                                 <h5 class="card-title">{{ $product->name }}</h5>
-                                <p class="card-text text-muted">{{ Str::limit($product->description, 80) }}</p>
+                                <p class="card-text text-body-secondary">{{ Str::limit($product->description, 80) }}</p>
                                 <p class="fw-bold text-success">$ {{ number_format($product->price, 2) }}</p>
                                 <a href="{{ route('catalog.show', $product) }}" class="btn btn-outline-primary btn-sm">Ver detalle</a>
                             </div>
                         </div>
                     </div>
                 @empty
-                    <p class="text-muted">Próximamente publicaremos nuestros productos.</p>
+                    <p class="text-body-secondary">Próximamente publicaremos nuestros productos.</p>
                 @endforelse
             </div>
             @if($featured->count() > 0)
@@ -93,7 +93,7 @@
     </section>
 
     <footer class="bg-light border-top py-4 mt-auto">
-        <div class="container text-center text-muted">
+        <div class="container text-center text-dark">
             <p class="mb-1">&copy; {{ date('Y') }} {{ $companyName }}</p>
             <p class="small mb-0">RIF {{ \App\Models\Setting::get('company_tax_id', '') }}</p>
         </div>

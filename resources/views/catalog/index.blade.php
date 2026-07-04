@@ -43,7 +43,7 @@
                         <p class="card-text text-success fw-bold">$ {{ number_format($product->price, 2) }}</p>
                         <p class="card-text small">{{ Str::limit($product->description, 80) }}</p>
                         @if($product->description_zh)
-                            <p class="card-text small text-muted">{{ Str::limit($product->description_zh, 80) }}</p>
+                            <p class="card-text small text-body-secondary">{{ Str::limit($product->description_zh, 80) }}</p>
                         @endif
                         <a href="{{ route('catalog.show', $product) }}" class="btn btn-sm btn-primary">Ver más</a>
                     </div>

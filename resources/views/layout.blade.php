@@ -220,7 +220,7 @@
         }
 
         .text-muted {
-            color: {{ $isLight ? '#6b7280' : '#94a3b8' }} !important;
+            color: {{ $isLight ? '#374151' : '#94a3b8' }} !important;
         }
 
         .card .text-muted {
@@ -511,7 +511,7 @@
                                 </form>
                             </li>
                             <li>
-                                <a href="{{ route('error-report.create') }}" class="dropdown-item text-warning">{{ __('ui.nav.report_problem') }}</a>
+                                <a href="{{ route('error-report.create') }}" class="dropdown-item text-dark fw-semibold">{{ __('ui.nav.report_problem') }}</a>
                             </li>
                         </ul>
                     </li>

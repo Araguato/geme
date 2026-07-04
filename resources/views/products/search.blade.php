@@ -29,7 +29,7 @@
                     @endif
                     <div class="card-body">
                         <h5 class="card-title">{{ $product->name }}</h5>
-                        <p class="card-text text-muted mb-1">{{ $product->category?->name ?? 'Sin categoría' }}</p>
+                        <p class="card-text text-body-secondary mb-1">{{ $product->category?->name ?? 'Sin categoría' }}</p>
                         <p class="card-text text-success fw-bold">$ {{ number_format($product->price, 2) }}</p>
 
                         @if($product->barcodes->isNotEmpty())
@@ -61,7 +61,7 @@
                                 : route('catalog.show', $product);
                         @endphp
                         <div class="mt-3 text-center">
-                            <p class="small text-muted mb-1">Escanea para ver la ficha</p>
+                            <p class="small text-body-secondary mb-1">Escanea para ver la ficha</p>
                             <img src="https://chart.googleapis.com/chart?cht=qr&chs=150x150&chl={{ urlencode($lookupUrl) }}" alt="QR" class="img-fluid">
                         </div>
                     </div>
