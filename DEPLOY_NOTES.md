@@ -46,6 +46,23 @@ Dieses Dokument hält fest, welche Änderungen (insbesondere an der Datenbank) z
 
 ---
 
+## 2026-07-04 – Dashboard UI/UX: resumen al final, acceso admin/supervisor, responsive y contraste
+
+- **Branch/Tag:** `master`
+- **Feature/Beschreibung:** Rediseño del dashboard/landing page: módulos primero, estado de caja destacado, resumen del negocio y ventas del mes movidos al final y restringidos a admin/supervisor, layouts ahora respetan el tema (colores claro/oscuro), mejoras de contraste (evitar grises/muted sobre fondos blancos), optimización responsive para móviles.
+- **Neue Migrationen:** keine
+- **Betroffene Tabellen:** keine
+- **Lokale Schritte:**
+  - `php artisan view:clear`
+  - Manuell: Dashboard mit Admin- und Nicht-Admin-Benutzer prüfen, Menü/Kontrast auf Smartphone-Bildschirmen testen.
+- **Server/CapRover Schritte:**
+  - Deploy aktueller `master`-Stand
+  - Im App-Container:
+    - `php artisan view:clear`
+  - Manuell: Dashboard für Admin/Supervisor und andere Rollen prüfen, Farbkontrast und Mobile-Ansicht testen.
+
+---
+
 ## 2026-01-17 – Finanzen-Modul (Ausgaben & Kategorien)
 
 - **Branch/Tag:** `main`
