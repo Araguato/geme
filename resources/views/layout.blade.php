@@ -155,8 +155,9 @@
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #ffcc00, #b30000);
-            border-color: #ffc107;
+            background: linear-gradient(135deg, {{ $themeAccentColor }}, {{ $themePrimaryColor }});
+            border-color: {{ $themeAccentColor }};
+            color: #ffffff;
         }
 
         .table {

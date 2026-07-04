@@ -14,6 +14,7 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @stack('styles')
     </head>
     @php
         $storedPrimary = \App\Models\Setting::get('theme_primary_color', '#0f172a');
