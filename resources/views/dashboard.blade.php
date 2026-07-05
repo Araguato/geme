@@ -92,18 +92,14 @@
                         <i class="bi bi-question-circle"></i>
                     </button>
                 </div>
-                <div class="row g-2">
+                <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-6 lg:grid-cols-8 gap-2">
                     @foreach($modules as $mod)
-                        <div class="col-3 col-md-3 col-lg-2">
-                            <a href="{{ $mod['route'] }}" @if(!empty($mod['target'])) target="{{ $mod['target'] }}" @endif class="dashboard-tile card h-100 text-decoration-none border-0 shadow-sm" id="{{ $mod['id'] }}" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                                <div class="card-body text-center py-2 px-1 dashboard-tile-body">
-                                    <div class="mb-1 d-flex justify-content-center align-items-center rounded-circle mx-auto dashboard-icon-bg" style="width: 36px; height: 36px; background: {{ $themeAccent }}22;">
-                                        <i class="bi {{ $mod['icon'] }} fs-5" style="color: {{ $themeAccent }};"></i>
-                                    </div>
-                                    <h6 class="card-title mb-0 dashboard-tile-label" style="color: {{ $cardText }};">{{ $mod['label'] }}</h6>
-                                </div>
-                            </a>
-                        </div>
+                        <a href="{{ $mod['route'] }}" @if(!empty($mod['target'])) target="{{ $mod['target'] }}" @endif class="dashboard-tile rounded no-underline shadow-sm flex flex-col items-center justify-center text-center py-2 px-1" id="{{ $mod['id'] }}" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }}; min-height: 84px;">
+                            <div class="mb-1 flex justify-center items-center rounded-full dashboard-icon-bg" style="width: 36px; height: 36px; background: {{ $themeAccent }}22;">
+                                <i class="bi {{ $mod['icon'] }} text-xl" style="color: {{ $themeAccent }};"></i>
+                            </div>
+                            <span class="dashboard-tile-label" style="color: {{ $cardText }};">{{ $mod['label'] }}</span>
+                        </a>
                     @endforeach
                 </div>
             </div>
