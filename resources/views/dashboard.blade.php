@@ -107,69 +107,49 @@
             {{-- Resumen del negocio / Ventas del mes: solo admin y supervisor --}}
             @if($canSeeSummary)
                 <div class="mb-4">
-                    <h3 class="h5 mb-3 fw-semibold" style="color: {{ $cardText }};">Resumen del negocio</h3>
-                    <div class="row g-3 mb-4" id="dashboardKpis">
-                        <div class="col-6 col-lg-3">
-                            <div class="card h-100 border-0 shadow-sm" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                                <div class="card-body">
-                                    <h6 class="card-title" style="color: {{ $mutedText }};">Ventas hoy</h6>
-                                    <p class="card-text fs-4 fw-bold" style="color: {{ $cardText }};">$ {{ number_format($salesToday, 2) }}</p>
-                                    <small style="color: {{ $mutedText }};">{{ $ordersToday }} órdenes</small>
-                                </div>
-                            </div>
+                    <h3 class="text-lg font-semibold mb-3" style="color: {{ $cardText }};">Resumen del negocio</h3>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4" id="dashboardKpis">
+                        <div class="rounded shadow-sm p-4" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
+                            <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Ventas hoy</h6>
+                            <p class="text-2xl font-bold" style="color: {{ $cardText }};">$ {{ number_format($salesToday, 2) }}</p>
+                            <small style="color: {{ $mutedText }};">{{ $ordersToday }} órdenes</small>
                         </div>
-                        <div class="col-6 col-lg-3">
-                            <div class="card h-100 border-0 shadow-sm" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                                <div class="card-body">
-                                    <h6 class="card-title" style="color: {{ $mutedText }};">Ventas del mes</h6>
-                                    <p class="card-text fs-4 fw-bold" style="color: {{ $cardText }};">$ {{ number_format($salesMonth, 2) }}</p>
-                                    <small style="color: {{ $mutedText }};">{{ $ordersMonth }} órdenes</small>
-                                </div>
-                            </div>
+                        <div class="rounded shadow-sm p-4" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
+                            <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Ventas del mes</h6>
+                            <p class="text-2xl font-bold" style="color: {{ $cardText }};">$ {{ number_format($salesMonth, 2) }}</p>
+                            <small style="color: {{ $mutedText }};">{{ $ordersMonth }} órdenes</small>
                         </div>
-                        <div class="col-6 col-lg-3">
-                            <div class="card h-100 border-0 shadow-sm" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                                <div class="card-body">
-                                    <h6 class="card-title" style="color: {{ $mutedText }};">Productos activos</h6>
-                                    <p class="card-text fs-4 fw-bold" style="color: {{ $cardText }};">{{ $productsCount }}</p>
-                                    <small style="color: {{ $mutedText }};">{{ $lowStock }} con stock bajo</small>
-                                </div>
-                            </div>
+                        <div class="rounded shadow-sm p-4" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
+                            <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Productos activos</h6>
+                            <p class="text-2xl font-bold" style="color: {{ $cardText }};">{{ $productsCount }}</p>
+                            <small style="color: {{ $mutedText }};">{{ $lowStock }} con stock bajo</small>
                         </div>
-                        <div class="col-6 col-lg-3">
-                            <div class="card h-100 border-0 shadow-sm" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                                <div class="card-body">
-                                    <h6 class="card-title" style="color: {{ $mutedText }};">Facturas por pagar</h6>
-                                    <p class="card-text fs-4 fw-bold" style="color: {{ $cardText }};">{{ $pendingInvoices }}</p>
-                                    <small style="color: {{ $mutedText }};">$ {{ number_format($pendingInvoiceAmount, 2) }}</small>
-                                </div>
-                            </div>
+                        <div class="rounded shadow-sm p-4" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
+                            <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Facturas por pagar</h6>
+                            <p class="text-2xl font-bold" style="color: {{ $cardText }};">{{ $pendingInvoices }}</p>
+                            <small style="color: {{ $mutedText }};">$ {{ number_format($pendingInvoiceAmount, 2) }}</small>
                         </div>
                     </div>
 
-                    <div class="row g-4">
-                        <div class="col-12 col-lg-8">
-                            <div class="card h-100 border-0 shadow-sm" id="dashboardChart" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                                <div class="card-header fw-bold border-0" style="background: {{ $cardBg }}; color: {{ $cardText }};">Ventas del mes</div>
-                                <div class="card-body" style="height: 300px;">
-                                    <canvas id="salesChart" height="120"></canvas>
-                                </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="lg:col-span-2 rounded shadow-sm" id="dashboardChart" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
+                            <div class="px-4 py-3 font-bold border-b" style="background: {{ $cardBg }}; color: {{ $cardText }}; border-color: {{ $borderColor }};">Ventas del mes</div>
+                            <div class="p-4" style="height: 300px;">
+                                <canvas id="salesChart" height="120"></canvas>
                             </div>
                         </div>
-                        <div class="col-12 col-lg-4">
-                            <div class="card h-100 border-0 shadow-sm" id="dashboardLowStock" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                                <div class="card-header fw-bold border-0" style="background: {{ $cardBg }}; color: {{ $cardText }};">Stock bajo</div>
-                                <ul class="list-group list-group-flush">
-                                    @forelse($lowStockProducts as $product)
-                                        <li class="list-group-item d-flex justify-content-between" style="background: {{ $cardBg }}; color: {{ $cardText }}; border-color: {{ $borderColor }};">
-                                            <span>{{ Str::limit($product->name, 25) }}</span>
-                                            <span class="badge bg-danger">{{ $product->stock_quantity }}</span>
-                                        </li>
-                                    @empty
-                                        <li class="list-group-item" style="background: {{ $cardBg }}; color: {{ $mutedText }}; border-color: {{ $borderColor }};">No hay productos con stock bajo.</li>
-                                    @endforelse
-                                </ul>
-                            </div>
+                        <div class="rounded shadow-sm" id="dashboardLowStock" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
+                            <div class="px-4 py-3 font-bold border-b" style="background: {{ $cardBg }}; color: {{ $cardText }}; border-color: {{ $borderColor }};">Stock bajo</div>
+                            <ul class="divide-y" style="border-color: {{ $borderColor }};">
+                                @forelse($lowStockProducts as $product)
+                                    <li class="flex justify-between items-center px-4 py-2" style="background: {{ $cardBg }}; color: {{ $cardText }};">
+                                        <span>{{ Str::limit($product->name, 25) }}</span>
+                                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold text-white" style="background: #dc3545;">{{ $product->stock_quantity }}</span>
+                                    </li>
+                                @empty
+                                    <li class="px-4 py-2" style="background: {{ $cardBg }}; color: {{ $mutedText }};">No hay productos con stock bajo.</li>
+                                @endforelse
+                            </ul>
                         </div>
                     </div>
                 </div>
