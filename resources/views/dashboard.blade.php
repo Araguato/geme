@@ -54,9 +54,9 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     @endpush
 
-    <div class="py-6 sm:py-8" style="background-color: {{ $pageBg }}; color: {{ $cardText }};">
+    <div class="py-3 py-sm-4" style="background-color: {{ $pageBg }}; color: {{ $cardText }};">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex justify-between items-center mb-3">
                 <div>
                     <h1 class="text-2xl font-bold" style="color: {{ $cardText }};">Hola, {{ $user->name }}</h1>
                     <p class="text-sm mt-1" style="color: {{ $mutedText }};">Selecciona una acción para empezar.</p>
@@ -67,7 +67,7 @@
             </div>
 
             {{-- Estado de caja --}}
-            <div class="card mb-3 shadow-sm border-0" style="background-color: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
+            <div class="card mb-2 shadow-sm border-0" style="background-color: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
                 <div class="card-body py-2 px-3 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         @if($activeShift)
@@ -85,22 +85,22 @@
             </div>
 
             {{-- Módulos principales --}}
-            <div class="mb-5">
+            <div class="mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h3 class="h5 mb-0 fw-semibold" style="color: {{ $cardText }};">Módulos</h3>
+                    <h3 class="h6 mb-0 fw-semibold" style="color: {{ $cardText }};">Módulos</h3>
                     <button class="btn btn-sm btn-outline-accent d-sm-none" onclick="startDashboardTour()" style="border-color: {{ $themeAccent }}; color: {{ $themeAccent }};">
                         <i class="bi bi-question-circle"></i>
                     </button>
                 </div>
                 <div class="row g-2">
                     @foreach($modules as $mod)
-                        <div class="col-4 col-md-3 col-lg-2">
+                        <div class="col-3 col-md-3 col-lg-2">
                             <a href="{{ $mod['route'] }}" @if(!empty($mod['target'])) target="{{ $mod['target'] }}" @endif class="dashboard-tile card h-100 text-decoration-none border-0 shadow-sm" id="{{ $mod['id'] }}" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                                <div class="card-body text-center py-3 px-2">
-                                    <div class="mb-2 d-flex justify-content-center align-items-center rounded-circle mx-auto dashboard-icon-bg" style="width: 44px; height: 44px; background: {{ $themeAccent }}22;">
-                                        <i class="bi {{ $mod['icon'] }} fs-4" style="color: {{ $themeAccent }};"></i>
+                                <div class="card-body text-center py-2 px-1 dashboard-tile-body">
+                                    <div class="mb-1 d-flex justify-content-center align-items-center rounded-circle mx-auto dashboard-icon-bg" style="width: 36px; height: 36px; background: {{ $themeAccent }}22;">
+                                        <i class="bi {{ $mod['icon'] }} fs-5" style="color: {{ $themeAccent }};"></i>
                                     </div>
-                                    <h6 class="card-title mb-0" style="color: {{ $cardText }}; font-size: 0.85rem;">{{ $mod['label'] }}</h6>
+                                    <h6 class="card-title mb-0 dashboard-tile-label" style="color: {{ $cardText }};">{{ $mod['label'] }}</h6>
                                 </div>
                             </a>
                         </div>
@@ -192,6 +192,18 @@
         }
         .dashboard-tile:hover .dashboard-icon-bg {
             background: {{ $themeAccent }}33 !important;
+        }
+        .dashboard-tile-label {
+            font-size: 0.75rem;
+        }
+        @media (min-width: 576px) {
+            .dashboard-tile-label {
+                font-size: 0.85rem;
+            }
+            .dashboard-tile-body {
+                padding-top: 0.75rem !important;
+                padding-bottom: 0.75rem !important;
+            }
         }
         .btn-accent {
             font-weight: 600;
