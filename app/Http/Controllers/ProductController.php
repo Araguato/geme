@@ -148,7 +148,8 @@ class ProductController extends Controller
         } elseif (isset($data['cost']) && $data['cost'] !== null && $data['cost'] > 0 && isset($data['price'])) {
             // Si vienen costo y precio pero no margen, calcular margen
             if (!isset($data['markup_percent']) || $data['markup_percent'] === null) {
-                $data['markup_percent'] = round(((float) $data['price'] / (float) $data['cost'] - 1) * 100, 2);
+                $markup = round(((float) $data['price'] / (float) $data['cost'] - 1) * 100, 2);
+                $data['markup_percent'] = max(0, $markup);
             }
         }
 
@@ -319,7 +320,8 @@ class ProductController extends Controller
             }
         } elseif (isset($data['cost']) && $data['cost'] !== null && $data['cost'] > 0 && isset($data['price'])) {
             if (!isset($data['markup_percent']) || $data['markup_percent'] === null) {
-                $data['markup_percent'] = round(((float) $data['price'] / (float) $data['cost'] - 1) * 100, 2);
+                $markup = round(((float) $data['price'] / (float) $data['cost'] - 1) * 100, 2);
+                $data['markup_percent'] = max(0, $markup);
             }
         }
 
