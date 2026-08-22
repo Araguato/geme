@@ -183,38 +183,116 @@
     @if($product->isParent())
     <div class="border rounded p-3 mb-3" id="prod-variants">
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0">Variantes ({{ $product->variants->count() }})</h5>
+            <h5 class="mb-0">Variantes (sub-productos)</h5>
         </div>
-        <div class="table-responsive">
-            <table class="table table-sm mb-0">
+
+        {{-- Atributos definidos --}}
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Atributos de variante</label>
+            <div id="variant-attributes-container" class="mb-2">
+                @forelse($product->variantAttributes as $attr)
+                    <div class="row g-2 variant-attribute-row mb-2" data-index="{{ $loop->index }}">
+                        <div class="col-md-4">
+                            <input type="text" name="variant_attributes[{{ $loop->index }}][name]" class="form-control form-control-sm" value="{{ $attr->attribute_name }}" placeholder="Atributo (ej: Color)">
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" name="variant_attributes[{{ $loop->index }}][values]" class="form-control form-control-sm" value="{{ implode(', ', $attr->values) }}" placeholder="Valores separados por coma">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-variant-attr">Quitar</button>
+                        </div>
+                    </div>
+                @empty
+                    <div class="row g-2 variant-attribute-row mb-2" data-index="0">
+                        <div class="col-md-4">
+                            <input type="text" name="variant_attributes[0][name]" class="form-control form-control-sm" placeholder="Atributo (ej: Color)">
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" name="variant_attributes[0][values]" class="form-control form-control-sm" placeholder="Valores separados por coma">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-variant-attr">Quitar</button>
+                        </div>
+                    </div>
+                @endforelse
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-variant-attribute">+ Agregar atributo</button>
+        </div>
+
+        {{-- Variantes existentes (editables inline) --}}
+        <div class="table-responsive mb-3">
+            <table class="table table-sm mb-0" id="variants-table">
                 <thead>
                     <tr>
                         <th>Variante</th>
-                        <th>SKU</th>
-                        <th>Precio</th>
-                        <th>Stock</th>
-                        <th></th>
+                        <th style="width: 150px;">SKU</th>
+                        <th style="width: 110px;">Precio</th>
+                        <th style="width: 90px;">Stock</th>
+                        <th style="width: 50px;"></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($product->variants as $variant)
-                        <tr>
+                        <tr data-variant-id="{{ $variant->id }}">
                             <td>
                                 @foreach($variant->variant_attributes ?? [] as $attr => $val)
                                     <span class="badge bg-secondary me-1">{{ $attr }}: {{ $val }}</span>
                                 @endforeach
+                                <input type="hidden" name="update_variants[{{ $variant->id }}][variant_attributes]" value='{{ json_encode($variant->variant_attributes) }}'>
                             </td>
-                            <td>{{ $variant->sku ?? '-' }}</td>
-                            <td>$ {{ number_format($variant->price, 2) }}</td>
-                            <td>{{ $variant->stock_quantity }}</td>
-                            <td class="text-end">
-                                <a href="{{ route('products.edit', $variant) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                            <td><input type="text" name="update_variants[{{ $variant->id }}][sku]" class="form-control form-control-sm" value="{{ $variant->sku }}"></td>
+                            <td><input type="number" step="0.01" min="0" name="update_variants[{{ $variant->id }}][price]" class="form-control form-control-sm" value="{{ number_format($variant->price, 2, '.', '') }}"></td>
+                            <td><input type="number" min="0" name="update_variants[{{ $variant->id }}][stock_quantity]" class="form-control form-control-sm" value="{{ $variant->stock_quantity }}"></td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-variant" data-id="{{ $variant->id }}" title="Eliminar variante">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
+
+        {{-- Agregar nueva variante --}}
+        <div class="border rounded p-3 bg-light" id="add-variant-box">
+            <h6 class="mb-2">Agregar nueva variante</h6>
+            <div class="row g-2 align-items-end" id="new-variant-row">
+                <div class="col-md-3">
+                    <label class="form-label small">Atributos</label>
+                    <div id="new-variant-attrs">
+                        @foreach($product->variantAttributes as $attr)
+                            <select class="form-select form-select-sm mb-1 new-variant-attr" data-attr-name="{{ $attr->attribute_name }}">
+                                <option value="">{{ $attr->attribute_name }}...</option>
+                                @foreach($attr->values as $val)
+                                    <option value="{{ $val }}">{{ $val }}</option>
+                                @endforeach
+                            </select>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">SKU</label>
+                    <input type="text" id="new-variant-sku" class="form-control form-control-sm" placeholder="SKU">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Precio</label>
+                    <input type="number" step="0.01" min="0" id="new-variant-price" class="form-control form-control-sm" value="{{ number_format($product->price, 2, '.', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Stock</label>
+                    <input type="number" min="0" id="new-variant-stock" class="form-control form-control-sm" value="0">
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-sm btn-primary" id="btn-add-variant">
+                        <i class="bi bi-plus-lg"></i> Agregar variante
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Hidden inputs para nuevas variantes --}}
+        <div id="new-variants-hidden"></div>
     </div>
     @endif
 
@@ -337,6 +415,144 @@
             costInput.addEventListener('change', recalcPriceFromCostAndMargin);
             marginInput.addEventListener('change', recalcPriceFromCostAndMargin);
             priceInput.addEventListener('change', recalcMarginFromCostAndPrice);
+        }
+
+        // Variantes - atributos dinámicos
+        const variantAttrsContainer = document.getElementById('variant-attributes-container');
+        const addVariantAttrBtn = document.getElementById('add-variant-attribute');
+
+        function renumberVariantAttrs() {
+            if (!variantAttrsContainer) return;
+            const rows = Array.from(variantAttrsContainer.querySelectorAll('.variant-attribute-row'));
+            rows.forEach((row, idx) => {
+                row.dataset.index = idx;
+                row.querySelectorAll('input').forEach((input) => {
+                    input.name = input.name.replace(/variant_attributes\[\d+\]/, 'variant_attributes[' + idx + ']');
+                });
+            });
+        }
+
+        if (addVariantAttrBtn && variantAttrsContainer) {
+            addVariantAttrBtn.addEventListener('click', function() {
+                const idx = variantAttrsContainer.querySelectorAll('.variant-attribute-row').length;
+                const div = document.createElement('div');
+                div.className = 'row g-2 variant-attribute-row mb-2';
+                div.dataset.index = idx;
+                div.innerHTML = `
+                    <div class="col-md-4">
+                        <input type="text" name="variant_attributes[${idx}][name]" class="form-control form-control-sm" placeholder="Atributo (ej: Color)">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" name="variant_attributes[${idx}][values]" class="form-control form-control-sm" placeholder="Valores separados por coma">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-variant-attr">Quitar</button>
+                    </div>
+                `;
+                variantAttrsContainer.appendChild(div);
+            });
+
+            variantAttrsContainer.addEventListener('click', function(e) {
+                const btn = e.target.closest('.remove-variant-attr');
+                if (!btn) return;
+                const row = btn.closest('.variant-attribute-row');
+                if (row) {
+                    row.remove();
+                    renumberVariantAttrs();
+                }
+            });
+        }
+
+        // Agregar nueva variante inline
+        const btnAddVariant = document.getElementById('btn-add-variant');
+        const newVariantsHidden = document.getElementById('new-variants-hidden');
+        const variantsTableBody = document.querySelector('#variants-table tbody');
+        let newVariantIndex = 0;
+
+        if (btnAddVariant) {
+            btnAddVariant.addEventListener('click', function() {
+                const attrSelects = document.querySelectorAll('.new-variant-attr');
+                const attrs = {};
+                const labels = [];
+                attrSelects.forEach(sel => {
+                    if (sel.value) {
+                        attrs[sel.dataset.attrName] = sel.value;
+                        labels.push(sel.value);
+                    }
+                });
+
+                if (Object.keys(attrs).length === 0) {
+                    alert('Selecciona al menos un valor de atributo.');
+                    return;
+                }
+
+                const sku = document.getElementById('new-variant-sku').value.trim();
+                const price = parseFloat(document.getElementById('new-variant-price').value) || 0;
+                const stock = parseInt(document.getElementById('new-variant-stock').value) || 0;
+
+                // Hidden inputs
+                const prefix = `new_variants[${newVariantIndex}]`;
+                const hiddenDiv = document.createElement('div');
+                hiddenDiv.innerHTML = `
+                    <input type="hidden" name="${prefix}[variant_attributes]" value='${JSON.stringify(attrs)}'>
+                    <input type="hidden" name="${prefix}[sku]" value="${sku}">
+                    <input type="hidden" name="${prefix}[price]" value="${price}">
+                    <input type="hidden" name="${prefix}[stock_quantity]" value="${stock}">
+                `;
+                newVariantsHidden.appendChild(hiddenDiv);
+
+                // Visual row
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        ${labels.map(l => `<span class="badge bg-secondary me-1">${l}</span>`).join('')}
+                    </td>
+                    <td>${sku || '-'}</td>
+                    <td>$ ${price.toFixed(2)}</td>
+                    <td>${stock}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-new-variant" data-index="${newVariantIndex}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                variantsTableBody.appendChild(tr);
+
+                newVariantIndex++;
+
+                // Reset inputs
+                document.getElementById('new-variant-sku').value = '';
+                document.getElementById('new-variant-price').value = document.getElementById('new-variant-price').defaultValue;
+                document.getElementById('new-variant-stock').value = '0';
+                attrSelects.forEach(sel => sel.value = '');
+            });
+        }
+
+        // Eliminar nueva variante (no guardada)
+        if (variantsTableBody) {
+            variantsTableBody.addEventListener('click', function(e) {
+                const btn = e.target.closest('.remove-new-variant');
+                if (btn) {
+                    const idx = btn.dataset.index;
+                    const hidden = newVariantsHidden.querySelector(`input[name^="new_variants[${idx}]"]`);
+                    if (hidden) hidden.closest('div').remove();
+                    btn.closest('tr').remove();
+                    return;
+                }
+
+                // Eliminar variante existente
+                const delBtn = e.target.closest('.delete-variant');
+                if (delBtn) {
+                    if (!confirm('¿Eliminar esta variante?')) return;
+                    const variantId = delBtn.dataset.id;
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'delete_variants[]';
+                    input.value = variantId;
+                    newVariantsHidden.appendChild(input);
+                    delBtn.closest('tr').remove();
+                }
+            });
         }
 
         function filterProductLocations() {

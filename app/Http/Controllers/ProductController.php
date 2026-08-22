@@ -341,6 +341,20 @@ class ProductController extends Controller
             'barcodes.*.barcode' => 'nullable|string|max:50|distinct|unique:product_barcodes,barcode,' . $product->id . ',product_id',
             'barcodes.*.label' => 'nullable|string|max:50',
             'barcodes.*.multiplier' => 'nullable|numeric|min:0.001',
+            'variant_attributes' => 'nullable|array',
+            'variant_attributes.*.name' => 'nullable|string|max:100',
+            'variant_attributes.*.values' => 'nullable|string',
+            'update_variants' => 'nullable|array',
+            'update_variants.*.sku' => 'nullable|string|max:50',
+            'update_variants.*.price' => 'nullable|numeric|min:0',
+            'update_variants.*.stock_quantity' => 'nullable|numeric|min:0',
+            'new_variants' => 'nullable|array',
+            'new_variants.*.sku' => 'nullable|string|max:50|unique:products,sku',
+            'new_variants.*.price' => 'required_with:new_variants|numeric|min:0',
+            'new_variants.*.stock_quantity' => 'nullable|numeric|min:0',
+            'new_variants.*.variant_attributes' => 'required_with:new_variants|string',
+            'delete_variants' => 'nullable|array',
+            'delete_variants.*' => 'exists:products,id',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', false);
@@ -388,6 +402,11 @@ class ProductController extends Controller
         $mainImageId = $request->input('main_image_id');
         $deleteImages = $request->input('delete_images', []);
 
+        $variantAttributes = $request->input('variant_attributes', []);
+        $updateVariants = $request->input('update_variants', []);
+        $newVariants = $request->input('new_variants', []);
+        $deleteVariants = $request->input('delete_variants', []);
+
         $before = $product->only([
             'category_id',
             'name',
@@ -402,7 +421,7 @@ class ProductController extends Controller
             'default_unit',
         ]);
 
-        DB::transaction(function () use ($product, $data, $barcodes, $uploadedImages, $legacyImage, $mainImageId, $deleteImages) {
+        DB::transaction(function () use ($product, $data, $barcodes, $uploadedImages, $legacyImage, $mainImageId, $deleteImages, $variantAttributes, $updateVariants, $newVariants, $deleteVariants) {
             $product->update($data);
 
             $rows = [];
@@ -433,6 +452,75 @@ class ProductController extends Controller
 
             $this->storeProductImages($product, $uploadedImages, $legacyImage);
             $this->setMainImage($product, $mainImageId);
+
+            // --- VARIANTES ---
+            if ($product->isParent() || count($variantAttributes) > 0) {
+                // Sync atributos: borrar todo y recrear
+                $product->variantAttributes()->delete();
+                foreach ($variantAttributes as $attr) {
+                    $name = trim($attr['name'] ?? '');
+                    $values = array_values(array_unique(array_filter(array_map('trim', explode(',', $attr['values'] ?? '')))));
+                    if ($name && count($values)) {
+                        $product->variantAttributes()->create([
+                            'attribute_name' => $name,
+                            'values' => $values,
+                        ]);
+                    }
+                }
+
+                // Actualizar variantes existentes
+                foreach ($updateVariants as $variantId => $variantData) {
+                    $variant = $product->variants()->find($variantId);
+                    if ($variant) {
+                        $update = [];
+                        if (array_key_exists('sku', $variantData)) {
+                            $sku = trim($variantData['sku']);
+                            $update['sku'] = $sku === '' ? null : $sku;
+                        }
+                        if (isset($variantData['price'])) {
+                            $update['price'] = (float) $variantData['price'];
+                        }
+                        if (isset($variantData['stock_quantity'])) {
+                            $update['stock_quantity'] = (float) $variantData['stock_quantity'];
+                        }
+                        if (count($update) > 0) {
+                            $variant->update($update);
+                        }
+                    }
+                }
+
+                // Crear nuevas variantes
+                foreach ($newVariants as $variantData) {
+                    $sku = isset($variantData['sku']) ? trim($variantData['sku']) : null;
+                    if ($sku === '') {
+                        $sku = null;
+                    }
+                    Product::create([
+                        'parent_product_id' => $product->id,
+                        'category_id' => $product->category_id,
+                        'name' => $product->name,
+                        'sku' => $sku,
+                        'description' => $product->description,
+                        'description_zh' => $product->description_zh,
+                        'price' => $variantData['price'],
+                        'cost' => $product->cost,
+                        'markup_percent' => $product->markup_percent,
+                        'is_active' => $product->is_active,
+                        'is_stock_tracked' => $product->is_stock_tracked,
+                        'is_service' => $product->is_service,
+                        'is_tax_inclusive' => $product->is_tax_inclusive,
+                        'is_price_change_allowed' => $product->is_price_change_allowed,
+                        'stock_quantity' => $variantData['stock_quantity'] ?? 0,
+                        'image_path' => $product->image_path,
+                        'variant_attributes' => json_decode($variantData['variant_attributes'], true),
+                    ]);
+                }
+
+                // Eliminar variantes marcadas
+                if (count($deleteVariants) > 0) {
+                    $product->variants()->whereIn('id', $deleteVariants)->delete();
+                }
+            }
         });
 
         $after = $product->only([
