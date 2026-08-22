@@ -20,6 +20,29 @@ Dieses Dokument hält fest, welche Änderungen (insbesondere an der Datenbank) z
 
 ---
 
+## 2026-08-22 – Sistema de variantes de producto (generalista)
+
+- **Branch/Tag:** `master`
+- **Feature/Beschreibung:** Productos padre con variantes hijas (color, tamaño, modelo, conexión, etc.). Cada variante tiene su propio SKU, precio y stock. Aplicable a cables, fundas, auriculares, etc. UI tipo treintaShop: en la edición del producto padre se pueden agregar/editar/eliminar variantes inline.
+- **Neue Migrationen:**
+  - `2026_08_22_120000_add_variant_columns_to_products_table`
+  - `2026_08_22_120100_create_product_variant_attributes_table`
+- **Betroffene Tabellen:**
+  - `products` (neue Spalten: `parent_product_id`, `variant_attributes`)
+  - `product_variant_attributes` (neue Tabelle)
+- **Lokale Schritte:**
+  - `php artisan migrate`
+  - `php artisan view:clear`
+  - Manuell: Producto padre con variantes erstellen, TPV/Catálogo prüfen.
+- **Server/CapRover Schritte:**
+  - Deploy aktueller `master`-Stand
+  - Im App-Container:
+    - `php artisan migrate --force`
+    - `php artisan view:clear`
+  - Manuell: Producto mit Varianten erstellen, TPV zeigt Varianten korrekt an, Catálogo zeigt Preisspanne und Varianten-Tabelle.
+
+---
+
 ## 2026-06-30 – Multi-Location TPV, Galería de productos, QR en catálogo
 
 - **Branch/Tag:** `master`
