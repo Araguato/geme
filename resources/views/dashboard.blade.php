@@ -29,24 +29,28 @@
         $accentLuma = (0.299 * $accentR + 0.587 * $accentG + 0.114 * $accentB) / 255;
         $accentTextColor = $accentLuma > 0.5 ? '#0f172a' : '#ffffff';
 
-        $modules = [
-            ['id' => 'dashboardPos', 'route' => route('pos.index'), 'label' => 'TPV', 'icon' => 'bi-cart-check'],
-            ['id' => 'dashboardProducts', 'route' => route('categories.index'), 'label' => 'Productos', 'icon' => 'bi-box-seam'],
-            ['id' => 'dashboardStock', 'route' => route('stock.index'), 'label' => 'Inventario', 'icon' => 'bi-clipboard-data'],
-            ['id' => 'dashboardSearch', 'route' => route('products.search'), 'label' => 'Buscar', 'icon' => 'bi-upc-scan'],
-            ['id' => 'dashboardWarehouses', 'route' => route('warehouses.index'), 'label' => 'Depósitos', 'icon' => 'bi-building'],
-            ['id' => 'dashboardLocations', 'route' => route('locations.index'), 'label' => 'Ubicaciones', 'icon' => 'bi-geo-alt'],
-            ['id' => 'dashboardCatalog', 'route' => route('catalog.index'), 'label' => 'Catálogo', 'icon' => 'bi-shop', 'target' => '_blank'],
-            ['id' => 'dashboardHelp', 'route' => route('help.index'), 'label' => 'Ayuda', 'icon' => 'bi-question-circle'],
+        $moduleGroups = [
+            'Ventas y operaciones' => [
+                ['id' => 'dashboardPos', 'route' => route('pos.index'), 'label' => 'TPV', 'icon' => 'bi-cart-check'],
+                ['id' => 'dashboardSearch', 'route' => route('products.search'), 'label' => 'Buscar productos', 'icon' => 'bi-upc-scan'],
+                ['id' => 'dashboardCatalog', 'route' => route('catalog.index'), 'label' => 'Catálogo público', 'icon' => 'bi-shop', 'target' => '_blank'],
+                ['id' => 'dashboardHelp', 'route' => route('help.index'), 'label' => 'Centro de ayuda', 'icon' => 'bi-question-circle'],
+            ],
+            'Inventario' => [
+                ['id' => 'dashboardProducts', 'route' => route('categories.index'), 'label' => 'Productos', 'icon' => 'bi-box-seam'],
+                ['id' => 'dashboardStock', 'route' => route('stock.index'), 'label' => 'Inventario / stock', 'icon' => 'bi-clipboard-data'],
+                ['id' => 'dashboardWarehouses', 'route' => route('warehouses.index'), 'label' => 'Depósitos', 'icon' => 'bi-building'],
+                ['id' => 'dashboardLocations', 'route' => route('locations.index'), 'label' => 'Ubicaciones', 'icon' => 'bi-geo-alt'],
+            ],
         ];
         if ($isAdmin) {
-            $modules = array_merge($modules, [
-                ['id' => 'dashboardSuppliers', 'route' => route('suppliers.index'), 'label' => 'Proveedores', 'icon' => 'bi-truck'],
-                ['id' => 'dashboardEmployees', 'route' => route('employees.index'), 'label' => 'Empleados', 'icon' => 'bi-people'],
-                ['id' => 'dashboardPayroll', 'route' => route('payroll-periods.index'), 'label' => 'Nómina', 'icon' => 'bi-wallet2'],
+            $moduleGroups['Administración'] = [
                 ['id' => 'dashboardFinances', 'route' => route('finances.index'), 'label' => 'Finanzas', 'icon' => 'bi-graph-up'],
+                ['id' => 'dashboardPayroll', 'route' => route('payroll-periods.index'), 'label' => 'Nómina', 'icon' => 'bi-wallet2'],
+                ['id' => 'dashboardEmployees', 'route' => route('employees.index'), 'label' => 'Empleados', 'icon' => 'bi-people'],
+                ['id' => 'dashboardSuppliers', 'route' => route('suppliers.index'), 'label' => 'Proveedores', 'icon' => 'bi-truck'],
                 ['id' => 'dashboardSettings', 'route' => route('settings.appearance.edit'), 'label' => 'Apariencia', 'icon' => 'bi-palette'],
-            ]);
+            ];
         }
     @endphp
 
@@ -92,14 +96,24 @@
                         <i class="bi bi-question-circle"></i>
                     </button>
                 </div>
-                <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                    @foreach($modules as $mod)
-                        <a href="{{ $mod['route'] }}" @if(!empty($mod['target'])) target="{{ $mod['target'] }}" @endif class="dashboard-tile rounded no-underline shadow-sm flex flex-col items-center justify-center text-center py-2 px-1" id="{{ $mod['id'] }}" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }}; min-height: 84px;">
-                            <div class="mb-1 flex justify-center items-center rounded-full dashboard-icon-bg" style="width: 36px; height: 36px; background: {{ $themeAccent }}22;">
-                                <i class="bi {{ $mod['icon'] }} text-xl" style="color: {{ $themeAccent }};"></i>
+                <div class="row g-3">
+                    @foreach($moduleGroups as $groupName => $groupModules)
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="card border-0 shadow-sm" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }} !important;">
+                                <div class="card-header py-2 px-3 border-bottom" style="background: transparent; border-color: {{ $borderColor }};">
+                                    <small class="text-uppercase fw-bold" style="color: {{ $mutedText }}; font-size: 0.7rem; letter-spacing: 0.05em;">{{ $groupName }}</small>
+                                </div>
+                                <div class="list-group list-group-flush">
+                                    @foreach($groupModules as $mod)
+                                        <a href="{{ $mod['route'] }}" @if(!empty($mod['target'])) target="{{ $mod['target'] }}" @endif class="list-group-item list-group-item-action d-flex align-items-center gap-2 py-2 px-3 dashboard-list-item" id="{{ $mod['id'] }}" style="background: transparent; color: {{ $cardText }}; border-color: {{ $borderColor }};">
+                                            <i class="bi {{ $mod['icon'] }} fs-5" style="color: {{ $themeAccent }};"></i>
+                                            <span class="fw-medium small">{{ $mod['label'] }}</span>
+                                            <i class="bi bi-chevron-right ms-auto small" style="color: {{ $mutedText }};"></i>
+                                        </a>
+                                    @endforeach
+                                </div>
                             </div>
-                            <span class="dashboard-tile-label" style="color: {{ $cardText }};">{{ $mod['label'] }}</span>
-                        </a>
+                        </div>
                     @endforeach
                 </div>
             </div>
@@ -158,28 +172,14 @@
     </div>
 
     <style>
-        .dashboard-tile {
-            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        .dashboard-list-item {
+            transition: background-color 0.12s ease, color 0.12s ease;
         }
-        .dashboard-tile:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-            border-color: {{ $themeAccent }} !important;
+        .dashboard-list-item:hover {
+            background-color: {{ $themeAccent }}15 !important;
         }
-        .dashboard-tile:hover .dashboard-icon-bg {
-            background: {{ $themeAccent }}33 !important;
-        }
-        .dashboard-tile-label {
-            font-size: 0.75rem;
-        }
-        @media (min-width: 576px) {
-            .dashboard-tile-label {
-                font-size: 0.85rem;
-            }
-            .dashboard-tile-body {
-                padding-top: 0.75rem !important;
-                padding-bottom: 0.75rem !important;
-            }
+        .dashboard-list-item:hover .bi-chevron-right {
+            color: {{ $themeAccent }} !important;
         }
         .btn-accent {
             font-weight: 600;
