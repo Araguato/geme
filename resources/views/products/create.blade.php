@@ -148,6 +148,54 @@
         </div>
         <div class="form-text">Usa multiplicador 1 para unidad. Para caja, coloca por ejemplo 6, 12, 24, etc.</div>
     </div>
+    <div class="border rounded p-3 mb-3" id="prod-variants">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Variantes</h5>
+        </div>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="has_variants" id="has_variants" {{ old('has_variants') ? 'checked' : '' }}>
+            <label class="form-check-label" for="has_variants">Este producto tiene variantes (color, tamaño, modelo, etc.)</label>
+        </div>
+        <div id="variants-section" style="display: {{ old('has_variants') ? 'block' : 'none' }};">
+            <div id="variant-attributes-container" class="mb-3">
+                @php($attrs = old('variant_attributes', [['name' => '', 'values' => '']]))
+                @foreach($attrs as $i => $attr)
+                <div class="row g-2 variant-attribute-row mb-2" data-index="{{ $i }}">
+                    <div class="col-md-4">
+                        <input type="text" name="variant_attributes[{{ $i }}][name]" class="form-control form-control-sm" value="{{ $attr['name'] ?? '' }}" placeholder="Atributo (ej: Color)">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" name="variant_attributes[{{ $i }}][values]" class="form-control form-control-sm" value="{{ $attr['values'] ?? '' }}" placeholder="Valores separados por coma (ej: Rojo, Azul, Negro)">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-variant-attr">Quitar</button>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary mb-3" id="add-variant-attribute">+ Agregar atributo</button>
+            <button type="button" class="btn btn-sm btn-primary mb-3" id="generate-variants">Generar combinaciones</button>
+
+            <div id="generated-variants" style="display: none;">
+                <h6 class="mb-2">Variantes generadas</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0" id="variants-table">
+                        <thead>
+                            <tr>
+                                <th>Variante</th>
+                                <th style="width: 180px;">SKU</th>
+                                <th style="width: 130px;">Precio</th>
+                                <th style="width: 100px;">Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="form-text">El precio base del producto padre se usa como default.</div>
+            </div>
+        </div>
+    </div>
+
     <div class="border rounded p-3 mb-3" id="prod-inventory">
         <h5 class="mb-3">Inventario y tipo de producto</h5>
         <div class="row">
@@ -277,6 +325,112 @@
             costInput.addEventListener('input', recalcPriceFromCostAndMargin);
             marginInput.addEventListener('input', recalcPriceFromCostAndMargin);
             priceInput.addEventListener('input', recalcMarginFromCostAndPrice);
+        }
+
+        // Variantes
+        const hasVariantsCheckbox = document.getElementById('has_variants');
+        const variantsSection = document.getElementById('variants-section');
+        const variantAttrsContainer = document.getElementById('variant-attributes-container');
+        const addVariantAttrBtn = document.getElementById('add-variant-attribute');
+        const generateVariantsBtn = document.getElementById('generate-variants');
+        const generatedVariantsDiv = document.getElementById('generated-variants');
+        const variantsTableBody = document.querySelector('#variants-table tbody');
+
+        if (hasVariantsCheckbox && variantsSection) {
+            hasVariantsCheckbox.addEventListener('change', function() {
+                variantsSection.style.display = this.checked ? 'block' : 'none';
+            });
+        }
+
+        function renumberVariantAttrs() {
+            const rows = Array.from(variantAttrsContainer.querySelectorAll('.variant-attribute-row'));
+            rows.forEach((row, idx) => {
+                row.dataset.index = idx;
+                row.querySelectorAll('input').forEach((input) => {
+                    input.name = input.name.replace(/variant_attributes\[\d+\]/, 'variant_attributes[' + idx + ']');
+                });
+            });
+        }
+
+        if (addVariantAttrBtn && variantAttrsContainer) {
+            addVariantAttrBtn.addEventListener('click', function() {
+                const idx = variantAttrsContainer.querySelectorAll('.variant-attribute-row').length;
+                const div = document.createElement('div');
+                div.className = 'row g-2 variant-attribute-row mb-2';
+                div.dataset.index = idx;
+                div.innerHTML = `
+                    <div class="col-md-4">
+                        <input type="text" name="variant_attributes[${idx}][name]" class="form-control form-control-sm" placeholder="Atributo (ej: Color)">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" name="variant_attributes[${idx}][values]" class="form-control form-control-sm" placeholder="Valores separados por coma (ej: Rojo, Azul, Negro)">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-variant-attr">Quitar</button>
+                    </div>
+                `;
+                variantAttrsContainer.appendChild(div);
+            });
+
+            variantAttrsContainer.addEventListener('click', function(e) {
+                const btn = e.target.closest('.remove-variant-attr');
+                if (!btn) return;
+                const row = btn.closest('.variant-attribute-row');
+                if (row) {
+                    row.remove();
+                    renumberVariantAttrs();
+                }
+            });
+        }
+
+        function cartesianProduct(arrays) {
+            return arrays.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())));
+        }
+
+        if (generateVariantsBtn && variantsTableBody) {
+            generateVariantsBtn.addEventListener('click', function() {
+                const rows = variantAttrsContainer.querySelectorAll('.variant-attribute-row');
+                const attrs = [];
+                rows.forEach(row => {
+                    const name = row.querySelector('input[name$="[name]"]')?.value.trim();
+                    const values = row.querySelector('input[name$="[values]"]')?.value.split(',').map(v => v.trim()).filter(v => v);
+                    if (name && values.length) {
+                        attrs.push({ name, values });
+                    }
+                });
+
+                if (attrs.length === 0) {
+                    alert('Define al menos un atributo con valores.');
+                    return;
+                }
+
+                const combinations = cartesianProduct(attrs.map(a => a.values.map(v => [a.name, v])));
+                variantsTableBody.innerHTML = '';
+
+                const basePrice = parseFloat(document.getElementById('price')?.value) || 0;
+
+                combinations.forEach((combo, idx) => {
+                    const attrsObj = {};
+                    const labels = [];
+                    combo.forEach(([name, value]) => {
+                        attrsObj[name] = value;
+                        labels.push(value);
+                    });
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>
+                            <input type="hidden" name="variants[${idx}][variant_attributes]" value='${JSON.stringify(attrsObj)}'>
+                            <span class="small">${labels.join(' / ')}</span>
+                        </td>
+                        <td><input type="text" name="variants[${idx}][sku]" class="form-control form-control-sm" placeholder="SKU"></td>
+                        <td><input type="number" step="0.01" min="0" name="variants[${idx}][price]" class="form-control form-control-sm" value="${basePrice.toFixed(2)}"></td>
+                        <td><input type="number" min="0" name="variants[${idx}][stock_quantity]" class="form-control form-control-sm" value="0"></td>
+                    `;
+                    variantsTableBody.appendChild(tr);
+                });
+
+                generatedVariantsDiv.style.display = 'block';
+            });
         }
 
         function filterProductLocations() {

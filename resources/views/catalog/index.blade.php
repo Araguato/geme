@@ -40,7 +40,14 @@
                     @endif
                     <div class="card-body">
                         <h5 class="card-title">{{ $product->name }}</h5>
-                        <p class="card-text text-success fw-bold">$ {{ number_format($product->price, 2) }}</p>
+                        <p class="card-text text-success fw-bold">
+                            @if($product->isParent() && $product->variants->count() > 0)
+                                $ {{ number_format($product->variants->min('price'), 2) }} – $ {{ number_format($product->variants->max('price'), 2) }}
+                                <span class="badge bg-info ms-1">{{ $product->variants->count() }} variantes</span>
+                            @else
+                                $ {{ number_format($product->price, 2) }}
+                            @endif
+                        </p>
                         <p class="card-text small">{{ Str::limit($product->description, 80) }}</p>
                         @if($product->description_zh)
                             <p class="card-text small text-body-secondary">{{ Str::limit($product->description_zh, 80) }}</p>

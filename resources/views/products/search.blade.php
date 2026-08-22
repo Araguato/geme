@@ -28,9 +28,20 @@
                         </div>
                     @endif
                     <div class="card-body">
-                        <h5 class="card-title">{{ $product->name }}</h5>
+                        <h5 class="card-title">
+                            {{ $product->name }}
+                            @if($product->isVariant())
+                                @foreach($product->variant_attributes ?? [] as $attr => $val)
+                                    <span class="badge bg-secondary ms-1">{{ $val }}</span>
+                                @endforeach
+                            @endif
+                        </h5>
                         <p class="card-text text-body-secondary mb-1">{{ $product->category?->name ?? 'Sin categoría' }}</p>
                         <p class="card-text text-success fw-bold">$ {{ number_format($product->price, 2) }}</p>
+
+                        @if($product->isVariant() && $product->parent)
+                            <p class="card-text small mb-1 text-info">Variante de: {{ $product->parent->name }}</p>
+                        @endif
 
                         @if($product->barcodes->isNotEmpty())
                             <p class="card-text small mb-1">

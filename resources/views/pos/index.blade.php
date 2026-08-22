@@ -131,11 +131,23 @@
                 <input type="text" id="product-search" class="form-control mb-3" placeholder="Buscar producto...">
                 <div class="list-group" id="product-list">
                     @foreach($products as $product)
+                        @php
+                            $displayName = $product->name;
+                            $variantLabels = [];
+                            if ($product->isVariant() && $product->variant_attributes) {
+                                foreach ($product->variant_attributes as $attr => $val) {
+                                    $variantLabels[] = $val;
+                                }
+                                if (count($variantLabels)) {
+                                    $displayName = $product->name . ' (' . implode(', ', $variantLabels) . ')';
+                                }
+                            }
+                        @endphp
                         <div class="list-group-item product-item-wrapper p-2">
                             <div class="d-flex align-items-center gap-3">
                                 <button type="button" class="btn btn-link p-0 product-info-btn flex-shrink-0"
                                         data-id="{{ $product->id }}"
-                                        data-name="{{ $product->name }}"
+                                        data-name="{{ $displayName }}"
                                         data-description="{{ $product->description }}"
                                         data-price="{{ $product->price }}"
                                         data-image="{{ $product->mainImage ? asset('storage/' . $product->mainImage->path) : '' }}"
@@ -153,10 +165,10 @@
                                 </button>
                                 <button type="button" class="list-group-item list-group-item-action border-0 product-add-btn flex-grow-1"
                                         data-id="{{ $product->id }}"
-                                        data-name="{{ $product->name }}"
+                                        data-name="{{ $displayName }}"
                                         data-price="{{ $product->price }}">
                                     <div class="d-flex justify-content-between">
-                                        <span class="fw-medium">{{ $product->name }}</span>
+                                        <span class="fw-medium">{{ $displayName }}</span>
                                         <span>$ {{ number_format($product->price, 2) }}</span>
                                     </div>
                                     <small class="text-body-secondary">{{ $product->category?->name }}</small>

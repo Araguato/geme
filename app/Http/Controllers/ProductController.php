@@ -22,7 +22,9 @@ class ProductController extends Controller
         $selectedCategoryId = $request->query('category_id');
         $search = $request->query('search');
 
-        $query = Product::with(['category', 'barcodes'])->orderBy('name');
+        $query = Product::with(['category', 'barcodes'])
+            ->whereNull('parent_product_id')
+            ->orderBy('name');
 
         if ($selectedCategoryId) {
             $query->where('category_id', $selectedCategoryId);
@@ -52,7 +54,7 @@ class ProductController extends Controller
     {
         $search = $request->query('search');
 
-        $query = Product::with(['category', 'barcodes', 'mainImage', 'images'])
+        $query = Product::with(['category', 'barcodes', 'mainImage', 'images', 'parent'])
             ->where('is_active', true)
             ->orderBy('name');
 
@@ -113,6 +115,15 @@ class ProductController extends Controller
             'barcodes.*.barcode' => 'nullable|string|max:50|distinct|unique:product_barcodes,barcode',
             'barcodes.*.label' => 'nullable|string|max:50',
             'barcodes.*.multiplier' => 'nullable|numeric|min:0.001',
+            'has_variants' => 'nullable|boolean',
+            'variant_attributes' => 'nullable|array',
+            'variant_attributes.*.name' => 'required_with:has_variants|string|max:100',
+            'variant_attributes.*.values' => 'required_with:has_variants|string',
+            'variants' => 'nullable|array',
+            'variants.*.sku' => 'nullable|string|max:50|unique:products,sku',
+            'variants.*.price' => 'required_with:has_variants|numeric|min:0',
+            'variants.*.stock_quantity' => 'nullable|numeric|min:0',
+            'variants.*.variant_attributes' => 'required_with:has_variants|string',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', false);
@@ -159,7 +170,11 @@ class ProductController extends Controller
         $uploadedImages = $request->file('images') ?? [];
         $legacyImage = $request->file('image');
 
-        DB::transaction(function () use ($data, $barcodes, $uploadedImages, $legacyImage) {
+        $hasVariants = $request->boolean('has_variants', false);
+        $variantAttributes = $request->input('variant_attributes', []);
+        $variants = $request->input('variants', []);
+
+        DB::transaction(function () use ($data, $barcodes, $uploadedImages, $legacyImage, $hasVariants, $variantAttributes, $variants) {
             $product = Product::create($data);
 
             $rows = [];
@@ -180,6 +195,46 @@ class ProductController extends Controller
             }
 
             $this->storeProductImages($product, $uploadedImages, $legacyImage);
+
+            if ($hasVariants) {
+                foreach ($variantAttributes as $attr) {
+                    $name = trim($attr['name'] ?? '');
+                    $values = array_values(array_unique(array_filter(array_map('trim', explode(',', $attr['values'] ?? '')))));
+                    if ($name && count($values)) {
+                        $product->variantAttributes()->create([
+                            'attribute_name' => $name,
+                            'values' => $values,
+                        ]);
+                    }
+                }
+
+                foreach ($variants as $variant) {
+                    $sku = isset($variant['sku']) ? trim($variant['sku']) : null;
+                    if ($sku === '') {
+                        $sku = null;
+                    }
+                    $variantData = [
+                        'parent_product_id' => $product->id,
+                        'category_id' => $product->category_id,
+                        'name' => $product->name,
+                        'sku' => $sku,
+                        'description' => $product->description,
+                        'description_zh' => $product->description_zh,
+                        'price' => $variant['price'],
+                        'cost' => $product->cost,
+                        'markup_percent' => $product->markup_percent,
+                        'is_active' => $product->is_active,
+                        'is_stock_tracked' => $product->is_stock_tracked,
+                        'is_service' => $product->is_service,
+                        'is_tax_inclusive' => $product->is_tax_inclusive,
+                        'is_price_change_allowed' => $product->is_price_change_allowed,
+                        'stock_quantity' => $variant['stock_quantity'] ?? 0,
+                        'image_path' => $product->image_path,
+                        'variant_attributes' => json_decode($variant['variant_attributes'], true),
+                    ];
+                    Product::create($variantData);
+                }
+            }
         });
 
         return redirect()->route('products.index');
@@ -191,7 +246,7 @@ class ProductController extends Controller
         $units = Unit::where('is_active', true)->orderBy('category')->orderBy('name')->get();
         $warehouses = Warehouse::orderBy('name')->get();
         $locations = Location::orderBy('name')->get();
-        $product->load('barcodes');
+        $product->load(['barcodes', 'variants', 'variantAttributes']);
         return view('products.edit', compact('product', 'categories', 'units', 'warehouses', 'locations'));
     }
 

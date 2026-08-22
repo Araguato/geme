@@ -67,7 +67,12 @@
                     -
                 @endif
             </td>
-            <td>{{ $product->name }}</td>
+            <td>
+                {{ $product->name }}
+                @if($product->isParent())
+                    <span class="badge bg-info ms-1" title="Tiene {{ $product->variants->count() }} variantes"><i class="bi bi-layers"></i> {{ $product->variants->count() }}</span>
+                @endif
+            </td>
             <td>{{ $product->sku }}</td>
             <td>{{ $product->barcodes?->first()?->barcode ?? '-' }}</td>
             <td>{{ $product->category?->name }}</td>

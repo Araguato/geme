@@ -30,6 +30,36 @@
                         <p class="text-body-secondary mt-2">SKU: {{ $product->sku }}</p>
                     @endif
 
+                    @if($product->isParent() && $product->variants->count() > 0)
+                        <div class="mt-3">
+                            <h5>Variantes disponibles</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Variante</th>
+                                            <th>SKU</th>
+                                            <th>Precio</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($product->variants as $variant)
+                                            <tr>
+                                                <td>
+                                                    @foreach($variant->variant_attributes ?? [] as $attr => $val)
+                                                        <span class="badge bg-secondary me-1">{{ $attr }}: {{ $val }}</span>
+                                                    @endforeach
+                                                </td>
+                                                <td>{{ $variant->sku ?? '-' }}</td>
+                                                <td>$ {{ number_format($variant->price, 2) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
                     @if($product->images->count() > 1)
                         <div class="row g-2 mt-3">
                             @foreach($product->images as $image)

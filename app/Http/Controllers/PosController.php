@@ -22,7 +22,11 @@ class PosController extends Controller
         $activeShift = CashShift::where('is_active', true)->latest()->first();
         $products = Product::where('is_active', true)
             ->where('is_raw_material', false)
-            ->with(['images', 'mainImage'])
+            ->with(['images', 'mainImage', 'parent', 'barcodes'])
+            ->where(function ($q) {
+                $q->whereNull('parent_product_id')->whereDoesntHave('variants')
+                  ->orWhereNotNull('parent_product_id');
+            })
             ->orderBy('name')
             ->get();
 

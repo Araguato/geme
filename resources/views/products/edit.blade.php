@@ -174,6 +174,50 @@
         </div>
         <div class="form-text">Usa multiplicador 1 para unidad. Para caja, coloca por ejemplo 6, 12, 24, etc.</div>
     </div>
+    @if($product->isVariant())
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Esta es una variante de <a href="{{ route('products.edit', $product->parent) }}">{{ $product->parent->name }}</a>.
+        </div>
+    @endif
+
+    @if($product->isParent())
+    <div class="border rounded p-3 mb-3" id="prod-variants">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Variantes ({{ $product->variants->count() }})</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Variante</th>
+                        <th>SKU</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($product->variants as $variant)
+                        <tr>
+                            <td>
+                                @foreach($variant->variant_attributes ?? [] as $attr => $val)
+                                    <span class="badge bg-secondary me-1">{{ $attr }}: {{ $val }}</span>
+                                @endforeach
+                            </td>
+                            <td>{{ $variant->sku ?? '-' }}</td>
+                            <td>$ {{ number_format($variant->price, 2) }}</td>
+                            <td>{{ $variant->stock_quantity }}</td>
+                            <td class="text-end">
+                                <a href="{{ route('products.edit', $variant) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
     <div class="border rounded p-3 mb-3" id="prod-inventory">
         <h5 class="mb-3">Inventario y tipo de producto</h5>
         <div class="row">

@@ -43,6 +43,19 @@ class Product extends Model
         'supplier_name',
         'is_service',
         'is_price_change_allowed',
+        'parent_product_id',
+        'variant_attributes',
+    ];
+
+    protected $casts = [
+        'variant_attributes' => 'array',
+        'is_active' => 'boolean',
+        'is_stock_tracked' => 'boolean',
+        'is_prepared' => 'boolean',
+        'is_raw_material' => 'boolean',
+        'is_tax_inclusive' => 'boolean',
+        'is_service' => 'boolean',
+        'is_price_change_allowed' => 'boolean',
     ];
 
     public function category()
@@ -83,5 +96,30 @@ class Product extends Model
     public function baseUnit()
     {
         return $this->belongsTo(Unit::class, 'base_unit_id');
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(Product::class, 'parent_product_id');
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(Product::class, 'parent_product_id');
+    }
+
+    public function variantAttributes()
+    {
+        return $this->hasMany(ProductVariantAttribute::class);
+    }
+
+    public function isVariant(): bool
+    {
+        return !is_null($this->parent_product_id);
+    }
+
+    public function isParent(): bool
+    {
+        return $this->variants()->exists();
     }
 }
