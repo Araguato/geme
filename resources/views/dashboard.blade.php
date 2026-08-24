@@ -37,7 +37,7 @@
                 ['id' => 'dashboardHelp', 'route' => route('help.index'), 'label' => 'Centro de ayuda', 'icon' => 'bi-question-circle'],
             ],
             'Inventario' => [
-                ['id' => 'dashboardProducts', 'route' => route('categories.index'), 'label' => 'Productos', 'icon' => 'bi-box-seam'],
+                ['id' => 'dashboardProducts', 'route' => route('products.index'), 'label' => 'Productos', 'icon' => 'bi-box-seam'],
                 ['id' => 'dashboardStock', 'route' => route('stock.index'), 'label' => 'Inventario / stock', 'icon' => 'bi-clipboard-data'],
                 ['id' => 'dashboardWarehouses', 'route' => route('warehouses.index'), 'label' => 'Depósitos', 'icon' => 'bi-building'],
                 ['id' => 'dashboardLocations', 'route' => route('locations.index'), 'label' => 'Ubicaciones', 'icon' => 'bi-geo-alt'],
