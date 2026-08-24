@@ -115,7 +115,6 @@ class ProductController extends Controller
             'barcodes.*.barcode' => 'nullable|string|max:50|distinct|unique:product_barcodes,barcode',
             'barcodes.*.label' => 'nullable|string|max:50',
             'barcodes.*.multiplier' => 'nullable|numeric|min:0.001',
-            'has_variants' => 'nullable|boolean',
             'variant_attributes' => 'nullable|array',
             'variant_attributes.*.name' => 'required_with:has_variants|string|max:100',
             'variant_attributes.*.values' => 'required_with:has_variants|string',
