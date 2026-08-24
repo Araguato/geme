@@ -397,6 +397,12 @@ class ProductController extends Controller
         $barcodes = $data['barcodes'] ?? [];
         unset($data['barcodes']);
 
+        // Limpiar campos de variantes de $data para evitar guardarlos como JSON en el producto padre
+        unset($data['variant_attributes']);
+        unset($data['update_variants']);
+        unset($data['new_variants']);
+        unset($data['delete_variants']);
+
         $uploadedImages = $request->file('images') ?? [];
         $legacyImage = $request->file('image');
         $mainImageId = $request->input('main_image_id');

@@ -180,16 +180,17 @@
         </div>
     @else
     {{-- Sección de variantes disponible para cualquier producto que no sea hijo --}}
+    @php($hasVariantAttrs = $product->variantAttributes->count() > 0 || $product->isParent())
     <div class="border rounded p-3 mb-3" id="prod-variants">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Variantes (sub-productos)</h5>
             <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="has-variants-toggle" {{ $product->isParent() ? 'checked' : '' }}>
+                <input class="form-check-input" type="checkbox" id="has-variants-toggle" {{ $hasVariantAttrs ? 'checked' : '' }}>
                 <label class="form-check-label" for="has-variants-toggle">Este producto tiene variantes</label>
             </div>
         </div>
 
-        <div id="variants-section-content" style="{{ $product->isParent() ? '' : 'display: none;' }}">
+        <div id="variants-section-content" style="{{ $hasVariantAttrs ? '' : 'display: none;' }}">
             {{-- Atributos definidos --}}
             <div class="mb-3">
                 <label class="form-label fw-semibold">Atributos de variante</label>
