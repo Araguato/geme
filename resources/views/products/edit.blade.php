@@ -178,115 +178,120 @@
         <div class="alert alert-info">
             <i class="bi bi-info-circle"></i> Esta es una variante de <a href="{{ route('products.edit', $product->parent) }}">{{ $product->parent->name }}</a>.
         </div>
-    @endif
-
-    @if($product->isParent())
+    @else
+    {{-- Sección de variantes disponible para cualquier producto que no sea hijo --}}
     <div class="border rounded p-3 mb-3" id="prod-variants">
-        <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Variantes (sub-productos)</h5>
-        </div>
-
-        {{-- Atributos definidos --}}
-        <div class="mb-3">
-            <label class="form-label fw-semibold">Atributos de variante</label>
-            <div id="variant-attributes-container" class="mb-2">
-                @forelse($product->variantAttributes as $attr)
-                    <div class="row g-2 variant-attribute-row mb-2" data-index="{{ $loop->index }}">
-                        <div class="col-md-4">
-                            <input type="text" name="variant_attributes[{{ $loop->index }}][name]" class="form-control form-control-sm" value="{{ $attr->attribute_name }}" placeholder="Atributo (ej: Color)">
-                        </div>
-                        <div class="col-md-6">
-                            <input type="text" name="variant_attributes[{{ $loop->index }}][values]" class="form-control form-control-sm" value="{{ implode(', ', $attr->values) }}" placeholder="Valores separados por coma">
-                        </div>
-                        <div class="col-md-2">
-                            <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-variant-attr">Quitar</button>
-                        </div>
-                    </div>
-                @empty
-                    <div class="row g-2 variant-attribute-row mb-2" data-index="0">
-                        <div class="col-md-4">
-                            <input type="text" name="variant_attributes[0][name]" class="form-control form-control-sm" placeholder="Atributo (ej: Color)">
-                        </div>
-                        <div class="col-md-6">
-                            <input type="text" name="variant_attributes[0][values]" class="form-control form-control-sm" placeholder="Valores separados por coma">
-                        </div>
-                        <div class="col-md-2">
-                            <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-variant-attr">Quitar</button>
-                        </div>
-                    </div>
-                @endforelse
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="has-variants-toggle" {{ $product->isParent() ? 'checked' : '' }}>
+                <label class="form-check-label" for="has-variants-toggle">Este producto tiene variantes</label>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-variant-attribute">+ Agregar atributo</button>
         </div>
 
-        {{-- Variantes existentes (editables inline) --}}
-        <div class="table-responsive mb-3">
-            <table class="table table-sm mb-0" id="variants-table">
-                <thead>
-                    <tr>
-                        <th>Variante</th>
-                        <th style="width: 150px;">SKU</th>
-                        <th style="width: 110px;">Precio</th>
-                        <th style="width: 90px;">Stock</th>
-                        <th style="width: 50px;"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($product->variants as $variant)
-                        <tr data-variant-id="{{ $variant->id }}">
-                            <td>
-                                @foreach($variant->variant_attributes ?? [] as $attr => $val)
-                                    <span class="badge bg-secondary me-1">{{ $attr }}: {{ $val }}</span>
-                                @endforeach
-                                <input type="hidden" name="update_variants[{{ $variant->id }}][variant_attributes]" value='{{ json_encode($variant->variant_attributes) }}'>
-                            </td>
-                            <td><input type="text" name="update_variants[{{ $variant->id }}][sku]" class="form-control form-control-sm" value="{{ $variant->sku }}"></td>
-                            <td><input type="number" step="0.01" min="0" name="update_variants[{{ $variant->id }}][price]" class="form-control form-control-sm" value="{{ number_format($variant->price, 2, '.', '') }}"></td>
-                            <td><input type="number" min="0" name="update_variants[{{ $variant->id }}][stock_quantity]" class="form-control form-control-sm" value="{{ $variant->stock_quantity }}"></td>
-                            <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-outline-danger delete-variant" data-id="{{ $variant->id }}" title="Eliminar variante">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </td>
+        <div id="variants-section-content" style="{{ $product->isParent() ? '' : 'display: none;' }}">
+            {{-- Atributos definidos --}}
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Atributos de variante</label>
+                <div id="variant-attributes-container" class="mb-2">
+                    @forelse($product->variantAttributes as $attr)
+                        <div class="row g-2 variant-attribute-row mb-2" data-index="{{ $loop->index }}">
+                            <div class="col-md-4">
+                                <input type="text" name="variant_attributes[{{ $loop->index }}][name]" class="form-control form-control-sm" value="{{ $attr->attribute_name }}" placeholder="Atributo (ej: Color)">
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" name="variant_attributes[{{ $loop->index }}][values]" class="form-control form-control-sm" value="{{ implode(', ', $attr->values) }}" placeholder="Valores separados por coma">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-variant-attr">Quitar</button>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="row g-2 variant-attribute-row mb-2" data-index="0">
+                            <div class="col-md-4">
+                                <input type="text" name="variant_attributes[0][name]" class="form-control form-control-sm" placeholder="Atributo (ej: Color)">
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" name="variant_attributes[0][values]" class="form-control form-control-sm" placeholder="Valores separados por coma">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-variant-attr">Quitar</button>
+                            </div>
+                        </div>
+                    @endforelse
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="add-variant-attribute">+ Agregar atributo</button>
+            </div>
+
+            {{-- Variantes existentes (editables inline) --}}
+            <div class="table-responsive mb-3">
+                <table class="table table-sm mb-0" id="variants-table">
+                    <thead>
+                        <tr>
+                            <th>Variante</th>
+                            <th style="width: 150px;">SKU</th>
+                            <th style="width: 110px;">Precio</th>
+                            <th style="width: 90px;">Stock</th>
+                            <th style="width: 50px;"></th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Agregar nueva variante --}}
-        <div class="border rounded p-3 bg-light" id="add-variant-box">
-            <h6 class="mb-2">Agregar nueva variante</h6>
-            <div class="row g-2 align-items-end" id="new-variant-row">
-                <div class="col-md-3">
-                    <label class="form-label small">Atributos</label>
-                    <div id="new-variant-attrs">
-                        @foreach($product->variantAttributes as $attr)
-                            <select class="form-select form-select-sm mb-1 new-variant-attr" data-attr-name="{{ $attr->attribute_name }}">
-                                <option value="">{{ $attr->attribute_name }}...</option>
-                                @foreach($attr->values as $val)
-                                    <option value="{{ $val }}">{{ $val }}</option>
-                                @endforeach
-                            </select>
+                    </thead>
+                    <tbody>
+                        @foreach($product->variants as $variant)
+                            <tr data-variant-id="{{ $variant->id }}">
+                                <td>
+                                    @foreach($variant->variant_attributes ?? [] as $attr => $val)
+                                        <span class="badge bg-secondary me-1">{{ $attr }}: {{ $val }}</span>
+                                    @endforeach
+                                    <input type="hidden" name="update_variants[{{ $variant->id }}][variant_attributes]" value='{{ json_encode($variant->variant_attributes) }}'>
+                                </td>
+                                <td><input type="text" name="update_variants[{{ $variant->id }}][sku]" class="form-control form-control-sm" value="{{ $variant->sku }}"></td>
+                                <td><input type="number" step="0.01" min="0" name="update_variants[{{ $variant->id }}][price]" class="form-control form-control-sm" value="{{ number_format($variant->price, 2, '.', '') }}"></td>
+                                <td><input type="number" min="0" name="update_variants[{{ $variant->id }}][stock_quantity]" class="form-control form-control-sm" value="{{ $variant->stock_quantity }}"></td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger delete-variant" data-id="{{ $variant->id }}" title="Eliminar variante">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
                         @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Agregar nueva variante --}}
+            <div class="border rounded p-3 bg-light" id="add-variant-box">
+                <h6 class="mb-2">Agregar nueva variante</h6>
+                <div class="row g-2 align-items-end" id="new-variant-row">
+                    <div class="col-md-3">
+                        <label class="form-label small">Atributos</label>
+                        <div id="new-variant-attrs">
+                            @foreach($product->variantAttributes as $attr)
+                                <select class="form-select form-select-sm mb-1 new-variant-attr" data-attr-name="{{ $attr->attribute_name }}">
+                                    <option value="">{{ $attr->attribute_name }}...</option>
+                                    @foreach($attr->values as $val)
+                                        <option value="{{ $val }}">{{ $val }}</option>
+                                    @endforeach
+                                </select>
+                            @endforeach
+                        </div>
                     </div>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small">SKU</label>
-                    <input type="text" id="new-variant-sku" class="form-control form-control-sm" placeholder="SKU">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small">Precio</label>
-                    <input type="number" step="0.01" min="0" id="new-variant-price" class="form-control form-control-sm" value="{{ number_format($product->price, 2, '.', '') }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small">Stock</label>
-                    <input type="number" min="0" id="new-variant-stock" class="form-control form-control-sm" value="0">
-                </div>
-                <div class="col-md-3">
-                    <button type="button" class="btn btn-sm btn-primary" id="btn-add-variant">
-                        <i class="bi bi-plus-lg"></i> Agregar variante
-                    </button>
+                    <div class="col-md-2">
+                        <label class="form-label small">SKU</label>
+                        <input type="text" id="new-variant-sku" class="form-control form-control-sm" placeholder="SKU">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Precio</label>
+                        <input type="number" step="0.01" min="0" id="new-variant-price" class="form-control form-control-sm" value="{{ number_format($product->price, 2, '.', '') }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Stock</label>
+                        <input type="number" min="0" id="new-variant-stock" class="form-control form-control-sm" value="0">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="button" class="btn btn-sm btn-primary" id="btn-add-variant">
+                            <i class="bi bi-plus-lg"></i> Agregar variante
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -415,6 +420,15 @@
             costInput.addEventListener('change', recalcPriceFromCostAndMargin);
             marginInput.addEventListener('change', recalcPriceFromCostAndMargin);
             priceInput.addEventListener('change', recalcMarginFromCostAndPrice);
+        }
+
+        // Toggle de sección de variantes
+        const hasVariantsToggle = document.getElementById('has-variants-toggle');
+        const variantsSectionContent = document.getElementById('variants-section-content');
+        if (hasVariantsToggle && variantsSectionContent) {
+            hasVariantsToggle.addEventListener('change', function() {
+                variantsSectionContent.style.display = hasVariantsToggle.checked ? 'block' : 'none';
+            });
         }
 
         // Variantes - atributos dinámicos
