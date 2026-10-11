@@ -77,6 +77,48 @@ class ProductController extends Controller
         return view('products.search', compact('products', 'search'));
     }
 
+    public function apiSearch(Request $request)
+    {
+        $search = $request->query('q');
+
+        $query = Product::with(['category', 'mainImage', 'images', 'parent'])
+            ->where('is_active', true)
+            ->orderBy('name');
+
+        if ($search) {
+            $searchTerm = trim($search);
+            if ($searchTerm !== '') {
+                $query->where(function ($q) use ($searchTerm) {
+                    $like = '%' . $searchTerm . '%';
+                    $q->where('name', 'like', $like)
+                        ->orWhere('sku', 'like', $like)
+                        ->orWhereHas('barcodes', function ($qb) use ($like) {
+                            $qb->where('barcode', 'like', $like);
+                        });
+                });
+            }
+        }
+
+        $products = $query->limit(20)->get();
+
+        return response()->json([
+            'products' => $products->map(function ($product) {
+                $mainImage = $product->mainImage;
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'sku' => $product->sku,
+                    'price' => $product->price,
+                    'category' => $product->category?->name,
+                    'image_url' => $mainImage ? asset('storage/' . $mainImage->path) : null,
+                    'variant_label' => $product->isVariant() && $product->variant_attributes
+                        ? implode(' / ', $product->variant_attributes)
+                        : null,
+                ];
+            }),
+        ]);
+    }
+
     public function create()
     {
         $categories = Category::orderBy('name')->get();

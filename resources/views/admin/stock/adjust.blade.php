@@ -23,14 +23,42 @@
 
         <div class="mb-3" id="adj-product">
             <label class="form-label">Producto</label>
-            <select name="product_id" class="form-select" required onchange="this.form.submit()">
-                <option value="">Seleccione...</option>
-                @foreach($products as $product)
-                    <option value="{{ $product->id }}" {{ optional($selectedProduct)->id === $product->id ? 'selected' : '' }}>
-                        {{ $product->name }}
-                    </option>
-                @endforeach
-            </select>
+            <input type="hidden" name="product_id" id="product_id" value="{{ optional($selectedProduct)->id }}">
+
+            @if($selectedProduct)
+                <div class="d-flex align-items-center gap-3 border rounded p-2 mb-2" id="selected-product-card">
+                    @if($selectedProduct->mainImage)
+                        <img src="{{ asset('storage/' . $selectedProduct->mainImage->path) }}" alt="{{ $selectedProduct->name }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
+                    @else
+                        <div class="bg-secondary-subtle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; border-radius: 4px;">
+                            <i class="bi bi-image text-secondary fs-4"></i>
+                        </div>
+                    @endif
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">{{ $selectedProduct->name }}</div>
+                        <div class="small text-muted">
+                            @if($selectedProduct->sku) SKU: {{ $selectedProduct->sku }} @endif
+                            @if($selectedProduct->sku && $selectedProduct->category) &middot; @endif
+                            {{ $selectedProduct->category?->name ?? '' }}
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearProductSelection()">Cambiar</button>
+                </div>
+            @endif
+
+            <div id="product-search-wrapper" style="{{ $selectedProduct ? 'display: none;' : '' }}">
+                <div class="position-relative">
+                    <input type="text"
+                           class="form-control"
+                           id="product-search-input"
+                           placeholder="Buscar producto por nombre, SKU o código de barras..."
+                           autocomplete="off">
+                    <div id="product-search-results"
+                         class="list-group position-absolute w-100 shadow-sm"
+                         style="z-index: 1050; max-height: 320px; overflow-y: auto; display: none;">
+                    </div>
+                </div>
+            </div>
         </div>
 
         @if($selectedProduct)
@@ -205,6 +233,65 @@
             { element: '#adj-details', intro: 'Estos campos se rellenan automáticamente al elegir una ubicación. Puedes editarlos manualmente si es necesario.' },
             { element: '#adj-qty', intro: 'Indica la cantidad y unidad del movimiento. En entradas, también puedes registrar el costo unitario.' }
         ];
+
+        // Buscador de productos con imágenes
+        const productSearchInput = document.getElementById('product-search-input');
+        const productSearchResults = document.getElementById('product-search-results');
+        let searchTimeout;
+
+        if (productSearchInput) {
+            productSearchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const q = this.value.trim();
+                if (q.length < 2) {
+                    productSearchResults.style.display = 'none';
+                    return;
+                }
+                searchTimeout = setTimeout(() => {
+                    fetch(`{{ route('products.api-search') }}?q=${encodeURIComponent(q)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            productSearchResults.innerHTML = '';
+                            if (data.products.length === 0) {
+                                productSearchResults.innerHTML = '<div class="list-group-item text-muted">No se encontraron productos</div>';
+                                productSearchResults.style.display = 'block';
+                                return;
+                            }
+                            data.products.forEach(p => {
+                                const imgHtml = p.image_url
+                                    ? `<img src="${p.image_url}" alt="${p.name}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px; flex-shrink: 0;">`
+                                    : `<div class="bg-secondary-subtle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 4px; flex-shrink: 0;"><i class="bi bi-image text-secondary"></i></div>`;
+                                const variantLabel = p.variant_label ? `<span class="badge bg-secondary ms-1">${p.variant_label}</span>` : '';
+                                const sku = p.sku ? `<div class="small text-muted">SKU: ${p.sku}</div>` : '';
+                                const item = document.createElement('a');
+                                item.href = '#';
+                                item.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2 py-2';
+                                item.innerHTML = `${imgHtml}<div class="flex-grow-1 min-width-0"><div class="fw-semibold text-truncate">${p.name}${variantLabel}</div>${sku}<div class="small text-success">$ ${parseFloat(p.price).toFixed(2)}</div></div>`;
+                                item.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    window.location.href = `{{ route('stock.adjust.form') }}?product_id=${p.id}`;
+                                });
+                                productSearchResults.appendChild(item);
+                            });
+                            productSearchResults.style.display = 'block';
+                        });
+                }, 300);
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!productSearchInput.contains(e.target) && !productSearchResults.contains(e.target)) {
+                    productSearchResults.style.display = 'none';
+                }
+            });
+        }
+
+        function clearProductSelection() {
+            const card = document.getElementById('selected-product-card');
+            if (card) card.style.display = 'none';
+            document.getElementById('product-search-wrapper').style.display = 'block';
+            document.getElementById('product_id').value = '';
+            if (productSearchInput) productSearchInput.focus();
+        }
 
         function toggleTransfer() {
             const type = document.getElementById('type').value;

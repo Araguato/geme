@@ -45,8 +45,11 @@ class StockController extends Controller
         $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
         $locations = Location::where('is_active', true)->with('warehouse')->orderBy('name')->get();
 
-        // Determinar producto seleccionado (parámetro explícito o valor previo del formulario)
+        // Determinar producto seleccionado (parámetro explícito, query string o valor previo del formulario)
         $selectedProduct = $product;
+        if (!$selectedProduct && request('product_id')) {
+            $selectedProduct = Product::find(request('product_id'));
+        }
         if (!$selectedProduct && old('product_id')) {
             $selectedProduct = Product::find(old('product_id'));
         }
