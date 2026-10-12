@@ -19,6 +19,8 @@ class OrderItem extends Model
         'tax_amount',
         'discount',
         'total',
+        'warehouse_id',
+        'location_id',
     ];
 
     public function order()

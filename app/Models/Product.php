@@ -108,6 +108,11 @@ class Product extends Model
         return $this->hasMany(Product::class, 'parent_product_id');
     }
 
+    public function stockItems()
+    {
+        return $this->hasMany(StockItem::class);
+    }
+
     public function variantAttributes()
     {
         return $this->hasMany(ProductVariantAttribute::class);

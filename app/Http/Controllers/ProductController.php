@@ -130,6 +130,19 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->has('image') && !$request->hasFile('image')) {
+            $maxUpload = ini_get('upload_max_filesize');
+            $maxPost = ini_get('post_max_size');
+            return back()->withErrors(['image' => "El archivo de imagen es demasiado grande o no se pudo subir. Límites del servidor: upload_max_filesize={$maxUpload}, post_max_size={$maxPost}."])->withInput();
+        }
+        $uploadedImagesCheck = $request->file('images') ?? [];
+        foreach ($uploadedImagesCheck as $idx => $file) {
+            if ($file && !$file->isValid()) {
+                $maxUpload = ini_get('upload_max_filesize');
+                return back()->withErrors(['images.' . $idx => "La imagen #{$idx} no se pudo subir. Verifica que no supere {$maxUpload}."])->withInput();
+            }
+        }
+
         $data = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
@@ -146,9 +159,9 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
             'markup_percent' => 'nullable|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif,bmp,heic,heif|max:10240',
             'images' => 'nullable|array',
-            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
+            'images.*' => 'image|mimes:jpg,jpeg,png,webp,gif,bmp,heic,heif|max:10240',
             'default_unit' => 'nullable|string|max:20',
             'stock_unit_id' => 'nullable|exists:units,id',
             'base_unit_id' => 'nullable|exists:units,id',
@@ -352,6 +365,20 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        // Detectar si PHP rechazó el upload por tamaño (upload_max_filesize / post_max_size)
+        if ($request->has('image') && !$request->hasFile('image')) {
+            $maxUpload = ini_get('upload_max_filesize');
+            $maxPost = ini_get('post_max_size');
+            return back()->withErrors(['image' => "El archivo de imagen es demasiado grande o no se pudo subir. Límites del servidor: upload_max_filesize={$maxUpload}, post_max_size={$maxPost}."])->withInput();
+        }
+        $uploadedImagesCheck = $request->file('images') ?? [];
+        foreach ($uploadedImagesCheck as $idx => $file) {
+            if ($file && !$file->isValid()) {
+                $maxUpload = ini_get('upload_max_filesize');
+                return back()->withErrors(['images.' . $idx => "La imagen #{$idx} no se pudo subir. Verifica que no supere {$maxUpload}."])->withInput();
+            }
+        }
+
         $data = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
@@ -368,9 +395,9 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
             'markup_percent' => 'nullable|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif,bmp,heic,heif|max:10240',
             'images' => 'nullable|array',
-            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
+            'images.*' => 'image|mimes:jpg,jpeg,png,webp,gif,bmp,heic,heif|max:10240',
             'main_image_id' => 'nullable|exists:product_images,id',
             'delete_images' => 'nullable|array',
             'delete_images.*' => 'exists:product_images,id',

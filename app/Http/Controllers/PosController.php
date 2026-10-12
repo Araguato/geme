@@ -10,6 +10,7 @@ use App\Models\Party;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\SalesLocation;
+use App\Models\StockItem;
 use App\Services\FiscalLedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,7 @@ class PosController extends Controller
         $activeShift = CashShift::where('is_active', true)->latest()->first();
         $products = Product::where('is_active', true)
             ->where('is_raw_material', false)
-            ->with(['images', 'mainImage', 'parent', 'barcodes'])
+            ->with(['images', 'mainImage', 'parent', 'barcodes', 'stockItems.warehouse', 'stockItems.location'])
             ->where(function ($q) {
                 $q->whereNull('parent_product_id')->whereDoesntHave('variants')
                   ->orWhereNotNull('parent_product_id');
@@ -70,6 +71,8 @@ class PosController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|numeric|min:0.001',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.warehouse_id' => 'nullable|exists:warehouses,id',
+            'items.*.location_id' => 'nullable|exists:locations,id',
             'payment.method' => 'required|in:cash,card,transfer,pagomovil,punto,cashea,other',
             'payment.amount' => 'required|numeric|min:0',
             'payment.reference' => 'nullable|string|max:255',
@@ -108,6 +111,8 @@ class PosController extends Controller
                 $taxRate = (float) ($product->tax_rate ?? 0);
                 $lineSubtotal = round($qty * $price, 2);
                 $lineTax = round($lineSubtotal * ($taxRate / 100), 2);
+                $warehouseId = $item['warehouse_id'] ?? null;
+                $locationId = $item['location_id'] ?? null;
 
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -118,7 +123,21 @@ class PosController extends Controller
                     'tax_rate' => $taxRate,
                     'tax_amount' => $lineTax,
                     'total' => $lineSubtotal + $lineTax,
+                    'warehouse_id' => $warehouseId,
+                    'location_id' => $locationId,
                 ]);
+
+                // Descontar stock del StockItem correspondiente
+                if ($warehouseId && $locationId && $product->is_stock_tracked) {
+                    $stockItem = StockItem::where('product_id', $product->id)
+                        ->where('warehouse_id', $warehouseId)
+                        ->where('location_id', $locationId)
+                        ->first();
+                    if ($stockItem) {
+                        $stockItem->quantity = max(0, (float) $stockItem->quantity - $qty);
+                        $stockItem->save();
+                    }
+                }
 
                 $subtotal += $lineSubtotal;
                 $tax += $lineTax;

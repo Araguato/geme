@@ -143,6 +143,16 @@
                                 }
                             }
                         @endphp
+                        @php
+                            $stockLocations = $product->stockItems->filter(fn($si) => (float) $si->quantity > 0)->values();
+                            $stockData = $stockLocations->map(fn($si) => [
+                                'warehouse_id' => $si->warehouse_id,
+                                'warehouse_name' => $si->warehouse?->name ?? 'Sin depósito',
+                                'location_id' => $si->location_id,
+                                'location_name' => $si->location?->name ?? 'Sin ubicación',
+                                'quantity' => (float) $si->quantity,
+                            ])->toJson();
+                        @endphp
                         <div class="list-group-item product-item-wrapper p-2">
                             <div class="d-flex align-items-center gap-3">
                                 <button type="button" class="btn btn-link p-0 product-info-btn flex-shrink-0"
@@ -166,12 +176,21 @@
                                 <button type="button" class="list-group-item list-group-item-action border-0 product-add-btn flex-grow-1"
                                         data-id="{{ $product->id }}"
                                         data-name="{{ $displayName }}"
-                                        data-price="{{ $product->price }}">
+                                        data-price="{{ $product->price }}"
+                                        data-stock-locations='{{ $stockData }}'>
                                     <div class="d-flex justify-content-between">
                                         <span class="fw-medium">{{ $displayName }}</span>
                                         <span>$ {{ number_format($product->price, 2) }}</span>
                                     </div>
                                     <small class="text-body-secondary">{{ $product->category?->name }}</small>
+                                    @if($stockLocations->isNotEmpty())
+                                        <div class="small text-info mt-1">
+                                            <i class="bi bi-geo-alt"></i>
+                                            @foreach($stockLocations as $si)
+                                                {{ $si->warehouse?->name ?? 'Sin depósito' }}/{{ $si->location?->name ?? 'Sin ubicación' }}: {{ number_format($si->quantity, 2) }}{{ $loop->last ? '' : ' | ' }}
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </button>
                             </div>
                         </div>
@@ -256,6 +275,21 @@
     </div>
 </div>
 
+<div class="modal fade" id="locationSelectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Seleccionar ubicación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-2">Elige desde qué depósito y ubicación se descontará el stock:</p>
+                <div class="list-group" id="locationSelectList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="productInfoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -294,6 +328,7 @@
     const totalEl = document.getElementById('cart-total');
     const paymentAmount = document.getElementById('payment-amount');
     const emptyRow = document.getElementById('empty-row');
+    let pendingAddProduct = null;
 
     function render() {
         tbody.innerHTML = '';
@@ -304,9 +339,12 @@
             cart.forEach((item, idx) => {
                 const lineTotal = item.qty * item.price;
                 total += lineTotal;
+                const locationLabel = item.warehouse_name && item.location_name
+                    ? `<div class="small text-muted"><i class="bi bi-geo-alt"></i> ${item.warehouse_name}/${item.location_name}</div>`
+                    : '';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${item.name}</td>
+                    <td>${item.name}${locationLabel}</td>
                     <td><input type="number" step="0.001" min="0.001" name="items[${idx}][quantity]" class="form-control form-control-sm qty-input" value="${item.qty}" data-idx="${idx}"></td>
                     <td><input type="number" step="0.01" min="0" name="items[${idx}][unit_price]" class="form-control form-control-sm price-input" value="${item.price.toFixed(2)}" data-idx="${idx}"></td>
                     <td class="line-total">${lineTotal.toFixed(2)}</td>
@@ -314,12 +352,59 @@
                         <button type="button" class="btn btn-sm btn-outline-danger remove-item" data-idx="${idx}">X</button>
                     </td>
                     <input type="hidden" name="items[${idx}][product_id]" value="${item.id}">
+                    <input type="hidden" name="items[${idx}][warehouse_id]" value="${item.warehouse_id ?? ''}">
+                    <input type="hidden" name="items[${idx}][location_id]" value="${item.location_id ?? ''}">
                 `;
                 tbody.appendChild(tr);
             });
         }
         totalEl.textContent = '$ ' + total.toFixed(2);
         paymentAmount.value = total.toFixed(2);
+    }
+
+    function addProductToCart(id, name, price, warehouseId, warehouseName, locationId, locationName) {
+        const existing = cart.find(i => i.id === id && i.warehouse_id == warehouseId && i.location_id == locationId);
+        if (existing) {
+            existing.qty += 1;
+        } else {
+            cart.push({ id, name, price, qty: 1, warehouse_id: warehouseId, warehouse_name: warehouseName, location_id: locationId, location_name: locationName });
+        }
+        render();
+    }
+
+    function openLocationModal(btn) {
+        const stockLocations = JSON.parse(btn.dataset.stockLocations || '[]');
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        const price = parseFloat(btn.dataset.price);
+
+        if (stockLocations.length === 0) {
+            addProductToCart(id, name, price, null, null, null, null);
+            return;
+        }
+        if (stockLocations.length === 1) {
+            const loc = stockLocations[0];
+            addProductToCart(id, name, price, loc.warehouse_id, loc.warehouse_name, loc.location_id, loc.location_name);
+            return;
+        }
+
+        pendingAddProduct = { id, name, price };
+        const list = document.getElementById('locationSelectList');
+        list.innerHTML = '';
+        stockLocations.forEach(loc => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+            item.innerHTML = `<span><strong>${loc.warehouse_name}</strong> &mdash; ${loc.location_name}</span><span class="badge bg-primary">Stock: ${loc.quantity}</span>`;
+            item.addEventListener('click', function() {
+                addProductToCart(id, name, price, loc.warehouse_id, loc.warehouse_name, loc.location_id, loc.location_name);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('locationSelectModal'));
+                modal.hide();
+            });
+            list.appendChild(item);
+        });
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('locationSelectModal'));
+        modal.show();
     }
 
     const productInfoModal = document.getElementById('productInfoModal');
@@ -331,16 +416,7 @@
 
     document.querySelectorAll('.product-add-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            const id = this.dataset.id;
-            const name = this.dataset.name;
-            const price = parseFloat(this.dataset.price);
-            const existing = cart.find(i => i.id === id);
-            if (existing) {
-                existing.qty += 1;
-            } else {
-                cart.push({ id, name, price, qty: 1 });
-            }
-            render();
+            openLocationModal(this);
         });
     });
 
