@@ -56,6 +56,88 @@ class InventoryService
     }
 
     /**
+     * Descuenta del inventario una línea vendida en el TPV.
+     * Usa el depósito/ubicación elegidos; si no vienen (o no coinciden), toma la
+     * ubicación con más existencias del producto. Registra el movimiento en el kardex.
+     */
+    public static function consumeSaleItem(
+        Product $product,
+        float $quantity,
+        ?int $warehouseId,
+        ?int $locationId,
+        Order $order,
+        ?int $userId = null
+    ): void {
+        if ($quantity <= 0) {
+            return;
+        }
+
+        if ($product->is_prepared) {
+            self::consumePreparedProduct($product, $quantity, $userId, $order);
+            return;
+        }
+
+        $stockItem = null;
+        if ($warehouseId && $locationId) {
+            $stockItem = StockItem::where('product_id', $product->id)
+                ->where('warehouse_id', $warehouseId)
+                ->where('location_id', $locationId)
+                ->lockForUpdate()
+                ->first();
+        }
+
+        if (!$stockItem) {
+            $stockItem = StockItem::where('product_id', $product->id)
+                ->orderByDesc('quantity')
+                ->lockForUpdate()
+                ->first();
+        }
+
+        // Productos sin existencias registradas solo se descuentan si controlan inventario
+        if (!$stockItem) {
+            if (!$product->is_stock_tracked) {
+                return;
+            }
+
+            $stockItem = StockItem::create([
+                'product_id' => $product->id,
+                'warehouse_id' => $warehouseId,
+                'location_id' => $locationId,
+                'unit_id' => $product->stock_unit_id,
+                'quantity' => 0,
+                'unit' => $product->default_unit ?: null,
+                'average_cost' => 0,
+                'min_quantity' => 0,
+            ]);
+        }
+
+        $unitCost = (float) $stockItem->average_cost;
+        $newQty = max(0, (float) $stockItem->quantity - $quantity);
+
+        $stockItem->quantity = $newQty;
+        $stockItem->save();
+
+        StockMovement::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $stockItem->warehouse_id,
+            'location_id' => $stockItem->location_id,
+            'unit_id' => $stockItem->unit_id,
+            'movement_date' => now(),
+            'type' => 'out',
+            'reason' => 'sale',
+            'quantity' => -1 * $quantity,
+            'unit' => $stockItem->unit,
+            'unit_cost' => $unitCost,
+            'total_cost' => -1 * $quantity * $unitCost,
+            'running_quantity' => $newQty,
+            'running_average_cost' => $unitCost,
+            'reference_type' => 'order',
+            'reference_id' => $order->id,
+            'performed_by' => $userId,
+        ]);
+    }
+
+    /**
      * Registra una entrada de inventario asociada a una factura de proveedor.
      */
     public static function recordPurchaseEntry(

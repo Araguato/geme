@@ -130,17 +130,8 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        if ($request->has('image') && !$request->hasFile('image')) {
-            $maxUpload = ini_get('upload_max_filesize');
-            $maxPost = ini_get('post_max_size');
-            return back()->withErrors(['image' => "El archivo de imagen es demasiado grande o no se pudo subir. Límites del servidor: upload_max_filesize={$maxUpload}, post_max_size={$maxPost}."])->withInput();
-        }
-        $uploadedImagesCheck = $request->file('images') ?? [];
-        foreach ($uploadedImagesCheck as $idx => $file) {
-            if ($file && !$file->isValid()) {
-                $maxUpload = ini_get('upload_max_filesize');
-                return back()->withErrors(['images.' . $idx => "La imagen #{$idx} no se pudo subir. Verifica que no supere {$maxUpload}."])->withInput();
-            }
+        if ($uploadError = $this->uploadErrorResponse($request)) {
+            return $uploadError;
         }
 
         $data = $request->validate([
@@ -366,17 +357,8 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         // Detectar si PHP rechazó el upload por tamaño (upload_max_filesize / post_max_size)
-        if ($request->has('image') && !$request->hasFile('image')) {
-            $maxUpload = ini_get('upload_max_filesize');
-            $maxPost = ini_get('post_max_size');
-            return back()->withErrors(['image' => "El archivo de imagen es demasiado grande o no se pudo subir. Límites del servidor: upload_max_filesize={$maxUpload}, post_max_size={$maxPost}."])->withInput();
-        }
-        $uploadedImagesCheck = $request->file('images') ?? [];
-        foreach ($uploadedImagesCheck as $idx => $file) {
-            if ($file && !$file->isValid()) {
-                $maxUpload = ini_get('upload_max_filesize');
-                return back()->withErrors(['images.' . $idx => "La imagen #{$idx} no se pudo subir. Verifica que no supere {$maxUpload}."])->withInput();
-            }
+        if ($uploadError = $this->uploadErrorResponse($request)) {
+            return $uploadError;
         }
 
         $data = $request->validate([
@@ -753,5 +735,28 @@ class ProductController extends Controller
         return redirect()
             ->route('products.prices.edit')
             ->with('success', "Precios actualizados: {$count} productos afectados con un ajuste del {$percentage}%.");
+    }
+
+    /**
+     * Detecta imágenes que PHP rechazó al subir (p. ej. por upload_max_filesize).
+     * Un campo de archivo vacío llega como null y no se considera error.
+     */
+    private function uploadErrorResponse(Request $request)
+    {
+        $maxUpload = ini_get('upload_max_filesize');
+
+        $mainImage = $request->file('image');
+        if ($mainImage && !$mainImage->isValid()) {
+            $maxPost = ini_get('post_max_size');
+            return back()->withErrors(['image' => "El archivo de imagen es demasiado grande o no se pudo subir. Límites del servidor: upload_max_filesize={$maxUpload}, post_max_size={$maxPost}."])->withInput();
+        }
+
+        foreach (($request->file('images') ?? []) as $idx => $file) {
+            if ($file && !$file->isValid()) {
+                return back()->withErrors(['images.' . $idx => "La imagen #{$idx} no se pudo subir. Verifica que no supere {$maxUpload}."])->withInput();
+            }
+        }
+
+        return null;
     }
 }

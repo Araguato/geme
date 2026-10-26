@@ -52,7 +52,9 @@ class DatabaseSeeder extends Seeder
 
         $this->call(LocationSeeder::class);
 
-        $admin = User::updateOrCreate(
+        // firstOrCreate: el seeder corre en cada arranque del contenedor y no debe
+        // sobrescribir la contraseña que el admin haya cambiado.
+        $admin = User::firstOrCreate(
             ['email' => 'admin@geme.com'],
             [
                 'name' => 'admin',

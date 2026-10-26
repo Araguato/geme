@@ -10,8 +10,8 @@ use App\Models\Party;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\SalesLocation;
-use App\Models\StockItem;
 use App\Services\FiscalLedgerService;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -127,17 +127,7 @@ class PosController extends Controller
                     'location_id' => $locationId,
                 ]);
 
-                // Descontar stock del StockItem correspondiente
-                if ($warehouseId && $locationId && $product->is_stock_tracked) {
-                    $stockItem = StockItem::where('product_id', $product->id)
-                        ->where('warehouse_id', $warehouseId)
-                        ->where('location_id', $locationId)
-                        ->first();
-                    if ($stockItem) {
-                        $stockItem->quantity = max(0, (float) $stockItem->quantity - $qty);
-                        $stockItem->save();
-                    }
-                }
+                InventoryService::consumeSaleItem($product, $qty, $warehouseId, $locationId, $order, Auth::id());
 
                 $subtotal += $lineSubtotal;
                 $tax += $lineTax;

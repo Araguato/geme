@@ -39,6 +39,12 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('dashboard');
         }
 
+        // Clientes (sin rol interno) van a la tienda en línea, no al panel
+        $staffRoles = ['supervisor', 'cajero', 'vendedor', 'almacenista', 'despachador'];
+        if (!$user || !$user->hasAnyRole($staffRoles)) {
+            return redirect()->intended(route('public.order.index', absolute: false));
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
@@ -58,7 +64,7 @@ class AuthenticatedSessionController extends Controller
 
     protected function validateTurnstile(Request $request): void
     {
-        if (app()->environment('local')) {
+        if (app()->environment('local', 'testing')) {
             return;
         }
 

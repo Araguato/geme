@@ -38,7 +38,13 @@ use App\Http\Controllers\CustomerRegistrationController;
 use App\Http\Controllers\LoginLogController;
 use App\Http\Controllers\SalesLocationController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
+
+// Grupos de roles (misma matriz que el menú en resources/views/layout.blade.php)
+$staff = 'role:admin|supervisor|cajero|vendedor|almacenista|despachador';
+$sales = 'role:admin|supervisor|cajero|vendedor';
+$inventory = 'role:admin|supervisor|almacenista';
+$management = 'role:admin|supervisor';
+$adminOnly = 'role:admin';
 
 Route::get('/', function () {
     return view('welcome');
@@ -63,10 +69,10 @@ Route::get('registro-cliente', [CustomerRegistrationController::class, 'create']
 Route::post('registro-cliente', [CustomerRegistrationController::class, 'store'])->name('customer.register.store');
 
 // Registro de logins (solo admin)
-Route::middleware('auth')->get('admin/login-logs', [LoginLogController::class, 'index'])->name('login-logs.index');
+Route::middleware(['auth', $adminOnly])->get('admin/login-logs', [LoginLogController::class, 'index'])->name('login-logs.index');
 
 // Ubicaciones de venta (admin)
-Route::middleware('auth')->resource('admin/sales-locations', SalesLocationController::class)->names('sales-locations');
+Route::middleware(['auth', $adminOnly])->resource('admin/sales-locations', SalesLocationController::class)->names('sales-locations');
 
 // Pedidos en línea (solo usuarios autenticados, se cobra al retirar / en entrega)
 Route::middleware('auth')->group(function () {
@@ -82,29 +88,12 @@ Route::middleware('auth')->group(function () {
 Route::get('/license', [LicenseController::class, 'show'])->name('license.show');
 Route::post('/license', [LicenseController::class, 'activate'])->name('license.activate');
 
-Route::get('/debug-env', function () {
-    return [
-        'env_DB_PASSWORD' => env('DB_PASSWORD'),
-        'mysql' => config('database.connections.mysql'),
-    ];
-});
-
-Route::get('/debug-db-ping', function () {
-    return DB::select('SELECT 1 as ok');
-});
-
 // Dashboard Jetstream
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])->name('dashboard');
+    ->middleware(['auth', 'verified', $staff])->name('dashboard');
 
-// Rutas protegidas
+// Rutas para cualquier usuario autenticado
 Route::middleware('auth')->group(function () {
-    Route::get('staff', function () {
-        return redirect()->route('dashboard');
-    })->name('staff.home');
-
-    Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);
-
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -112,10 +101,40 @@ Route::middleware('auth')->group(function () {
     // Redirección raíz autenticada
     Route::redirect('/', '/categories');
 
-    // Catálogo y configuración
-    Route::resource('categories', CategoryController::class)->except(['show']);
+    // Reporte de errores / problemas
+    Route::get('error-report', [ErrorReportController::class, 'create'])->name('error-report.create');
+    Route::post('error-report', [ErrorReportController::class, 'store'])->name('error-report.store');
+});
+
+// Personal (cualquier rol interno)
+Route::middleware(['auth', $staff])->group(function () {
+    Route::get('staff', function () {
+        return redirect()->route('dashboard');
+    })->name('staff.home');
+
+    Route::get('ayuda', [HelpCenterController::class, 'index'])->name('help.index');
+
+    // Consulta de productos (solo lectura)
     Route::get('products/search', [ProductController::class, 'search'])->name('products.search');
     Route::get('products/api-search', [ProductController::class, 'apiSearch'])->name('products.api-search');
+});
+
+// Ventas: TPV y caja
+Route::middleware(['auth', $sales])->group(function () {
+    Route::get('pos', [PosController::class, 'index'])->name('pos.index');
+    Route::post('pos', [PosController::class, 'store'])->name('pos.store');
+    Route::get('pos/ticket/{order}', [PosController::class, 'ticket'])->name('pos.ticket');
+    Route::post('cash-shifts/open', [CashShiftController::class, 'open'])->name('cash-shifts.open');
+    Route::post('cash-shifts/close', [CashShiftController::class, 'close'])->name('cash-shifts.close');
+
+    // Alta rápida de clientes desde el TPV
+    Route::get('parties/create', [PartyController::class, 'create'])->name('parties.create');
+    Route::post('parties', [PartyController::class, 'store'])->name('parties.store');
+});
+
+// Inventario: catálogo, stock y depósitos
+Route::middleware(['auth', $inventory])->group(function () {
+    Route::resource('categories', CategoryController::class)->except(['show']);
     Route::get('products/prices/edit', [ProductController::class, 'bulkPriceEdit'])->name('products.prices.edit');
     Route::post('products/prices/update', [ProductController::class, 'bulkPriceUpdate'])->name('products.prices.update');
     Route::resource('products', ProductController::class)->except(['show']);
@@ -123,10 +142,24 @@ Route::middleware('auth')->group(function () {
     Route::get('products/labels/bulk', [ProductController::class, 'bulkLabels'])->name('products.labels.bulk');
     Route::resource('units', UnitController::class)->except(['show']);
     Route::resource('unit-conversions', UnitConversionAdminController::class)->except(['show']);
-    Route::resource('suppliers', SupplierController::class)->except(['show', 'destroy']);
-    Route::get('parties/create', [PartyController::class, 'create'])->name('parties.create');
-    Route::post('parties', [PartyController::class, 'store'])->name('parties.store');
 
+    // Recetas de productos preparados
+    Route::get('products/{product}/recipe', [RecipeController::class, 'edit'])->name('products.recipe.edit');
+    Route::put('products/{product}/recipe', [RecipeController::class, 'update'])->name('products.recipe.update');
+
+    // Inventario: stock actual, ajustes y movimientos (kardex)
+    Route::get('stock', [StockController::class, 'index'])->name('stock.index');
+    Route::get('stock/adjust', [StockController::class, 'adjustForm'])->name('stock.adjust.form');
+    Route::post('stock/adjust', [StockController::class, 'adjust'])->name('stock.adjust');
+    Route::get('stock/{product}/movements', [StockController::class, 'movements'])->name('stock.movements');
+
+    // Sitios / Depósitos
+    Route::resource('warehouses', WarehouseController::class)->except(['show']);
+    Route::resource('locations', LocationController::class)->except(['show']);
+});
+
+// Gestión: cuentas por pagar, finanzas, SENIAT y nómina
+Route::middleware(['auth', $management])->group(function () {
     Route::resource('supplier-invoices', SupplierInvoiceController::class)->except(['destroy']);
     Route::post('supplier-invoices/{supplierInvoice}/payments', [SupplierPaymentController::class, 'store'])
         ->name('supplier-invoices.payments.store');
@@ -137,36 +170,15 @@ Route::middleware('auth')->group(function () {
 
     Route::get('supplier-ap/dashboard', [AccountsPayableDashboardController::class, 'index'])->name('supplier-ap.dashboard');
 
-    Route::resource('employees', EmployeeController::class)->except(['show', 'destroy']);
     Route::resource('payroll-periods', PayrollPeriodController::class)->except(['show', 'destroy']);
     Route::resource('payroll-runs', PayrollRunController::class)->except(['show', 'destroy']);
     Route::post('payroll-runs/{payroll_run}/generate', [PayrollRunController::class, 'generate'])->name('payroll-runs.generate');
     Route::post('payroll-runs/{payroll_run}/recalculate', [PayrollRunController::class, 'recalculate'])->name('payroll-runs.recalculate');
     Route::resource('payroll-entries', PayrollEntryController::class)->only(['index', 'show', 'edit', 'update']);
 
-    // Reporte de errores / problemas
-    Route::get('error-report', [ErrorReportController::class, 'create'])->name('error-report.create');
-    Route::post('error-report', [ErrorReportController::class, 'store'])->name('error-report.store');
-
     // Tasa BCV
     Route::get('settings/bcv', [SettingController::class, 'editBcv'])->name('settings.bcv.edit');
     Route::post('settings/bcv', [SettingController::class, 'updateBcv'])->name('settings.bcv.update');
-
-    // Apariencia / tema visual
-    Route::get('settings/appearance', [SettingController::class, 'editAppearance'])->name('settings.appearance.edit');
-    Route::post('settings/appearance', [SettingController::class, 'updateAppearance'])->name('settings.appearance.update');
-
-    // Configuración de finanzas (activar/desactivar módulo de costos)
-    Route::get('settings/finances', [SettingController::class, 'editFinances'])->name('settings.finances.edit');
-    Route::post('settings/finances', [SettingController::class, 'updateFinances'])->name('settings.finances.update');
-
-    // Datos fiscales de la empresa (SENIAT)
-    Route::get('settings/company', [SettingController::class, 'editCompany'])->name('settings.company.edit');
-    Route::post('settings/company', [SettingController::class, 'updateCompany'])->name('settings.company.update');
-
-    // Idioma y moneda
-    Route::get('settings/localization', [SettingController::class, 'editLocalization'])->name('settings.localization.edit');
-    Route::post('settings/localization', [SettingController::class, 'updateLocalization'])->name('settings.localization.update');
 
     // Finanzmodul: gastos y consumos (solo si está activado en settings)
     Route::get('finances', [ExpenseController::class, 'index'])->name('finances.index');
@@ -191,8 +203,29 @@ Route::middleware('auth')->group(function () {
     Route::get('finances/categories/{category}/edit', [ExpenseCategoryController::class, 'edit'])->name('finances.categories.edit');
     Route::put('finances/categories/{category}', [ExpenseCategoryController::class, 'update'])->name('finances.categories.update');
     Route::delete('finances/categories/{category}', [ExpenseCategoryController::class, 'destroy'])->name('finances.categories.destroy');
+});
 
-    Route::get('ayuda', [HelpCenterController::class, 'index'])->name('help.index');
+// Administración (solo admin)
+Route::middleware(['auth', $adminOnly])->group(function () {
+    Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);
+    Route::resource('suppliers', SupplierController::class)->except(['show', 'destroy']);
+    Route::resource('employees', EmployeeController::class)->except(['show', 'destroy']);
+
+    // Apariencia / tema visual
+    Route::get('settings/appearance', [SettingController::class, 'editAppearance'])->name('settings.appearance.edit');
+    Route::post('settings/appearance', [SettingController::class, 'updateAppearance'])->name('settings.appearance.update');
+
+    // Configuración de finanzas (activar/desactivar módulo de costos)
+    Route::get('settings/finances', [SettingController::class, 'editFinances'])->name('settings.finances.edit');
+    Route::post('settings/finances', [SettingController::class, 'updateFinances'])->name('settings.finances.update');
+
+    // Datos fiscales de la empresa (SENIAT)
+    Route::get('settings/company', [SettingController::class, 'editCompany'])->name('settings.company.edit');
+    Route::post('settings/company', [SettingController::class, 'updateCompany'])->name('settings.company.update');
+
+    // Idioma y moneda
+    Route::get('settings/localization', [SettingController::class, 'editLocalization'])->name('settings.localization.edit');
+    Route::post('settings/localization', [SettingController::class, 'updateLocalization'])->name('settings.localization.update');
 
     // Backup
     Route::get('backup/database', [BackupController::class, 'create'])->name('backup.database');
@@ -201,27 +234,6 @@ Route::middleware('auth')->group(function () {
     Route::get('products/export/csv', [ProductImportExportController::class, 'exportCsv'])->name('products.export.csv');
     Route::get('products/import', [ProductImportExportController::class, 'importForm'])->name('products.import.form');
     Route::post('products/import', [ProductImportExportController::class, 'import'])->name('products.import');
-
-    // Recetas de productos preparados
-    Route::get('products/{product}/recipe', [RecipeController::class, 'edit'])->name('products.recipe.edit');
-    Route::put('products/{product}/recipe', [RecipeController::class, 'update'])->name('products.recipe.update');
-
-    // Inventario: stock actual, ajustes y movimientos (kardex)
-    Route::get('stock', [StockController::class, 'index'])->name('stock.index');
-    Route::get('stock/adjust', [StockController::class, 'adjustForm'])->name('stock.adjust.form');
-    Route::post('stock/adjust', [StockController::class, 'adjust'])->name('stock.adjust');
-    Route::get('stock/{product}/movements', [StockController::class, 'movements'])->name('stock.movements');
-
-    // TPV / Punto de venta
-    Route::get('pos', [PosController::class, 'index'])->name('pos.index');
-    Route::post('pos', [PosController::class, 'store'])->name('pos.store');
-    Route::get('pos/ticket/{order}', [PosController::class, 'ticket'])->name('pos.ticket');
-    Route::post('cash-shifts/open', [CashShiftController::class, 'open'])->name('cash-shifts.open');
-    Route::post('cash-shifts/close', [CashShiftController::class, 'close'])->name('cash-shifts.close');
-
-    // Sitios / Depósitos
-    Route::resource('warehouses', WarehouseController::class)->except(['show']);
-    Route::resource('locations', LocationController::class)->except(['show']);
 });
 
 require __DIR__.'/auth.php';

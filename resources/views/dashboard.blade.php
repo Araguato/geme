@@ -10,6 +10,9 @@
         $isAdmin = $user && $user->hasRole('admin');
         $isSupervisor = $user && $user->hasRole('supervisor');
         $canSeeSummary = $isAdmin || $isSupervisor;
+        // Misma matriz de roles que routes/web.php
+        $canSell = $user && $user->hasAnyRole(['admin', 'supervisor', 'cajero', 'vendedor']);
+        $canManageInventory = $user && $user->hasAnyRole(['admin', 'supervisor', 'almacenista']);
         $storedPrimary = \App\Models\Setting::get('theme_primary_color', '#0f172a');
         $storedAccent = \App\Models\Setting::get('theme_accent_color', '#22c55e');
         $themeVariant = \App\Models\Setting::get('theme_variant', 'classic');
@@ -29,20 +32,25 @@
         $accentLuma = (0.299 * $accentR + 0.587 * $accentG + 0.114 * $accentB) / 255;
         $accentTextColor = $accentLuma > 0.5 ? '#0f172a' : '#ffffff';
 
+        $salesModules = [];
+        if ($canSell) {
+            $salesModules[] = ['id' => 'dashboardPos', 'route' => route('pos.index'), 'label' => 'TPV', 'icon' => 'bi-cart-check'];
+        }
+        $salesModules[] = ['id' => 'dashboardSearch', 'route' => route('products.search'), 'label' => 'Buscar productos', 'icon' => 'bi-upc-scan'];
+        $salesModules[] = ['id' => 'dashboardCatalog', 'route' => route('catalog.index'), 'label' => 'Catálogo público', 'icon' => 'bi-shop', 'target' => '_blank'];
+        $salesModules[] = ['id' => 'dashboardHelp', 'route' => route('help.index'), 'label' => 'Centro de ayuda', 'icon' => 'bi-question-circle'];
+
         $moduleGroups = [
-            'Ventas y operaciones' => [
-                ['id' => 'dashboardPos', 'route' => route('pos.index'), 'label' => 'TPV', 'icon' => 'bi-cart-check'],
-                ['id' => 'dashboardSearch', 'route' => route('products.search'), 'label' => 'Buscar productos', 'icon' => 'bi-upc-scan'],
-                ['id' => 'dashboardCatalog', 'route' => route('catalog.index'), 'label' => 'Catálogo público', 'icon' => 'bi-shop', 'target' => '_blank'],
-                ['id' => 'dashboardHelp', 'route' => route('help.index'), 'label' => 'Centro de ayuda', 'icon' => 'bi-question-circle'],
-            ],
-            'Inventario' => [
+            'Ventas y operaciones' => $salesModules,
+        ];
+        if ($canManageInventory) {
+            $moduleGroups['Inventario'] = [
                 ['id' => 'dashboardProducts', 'route' => route('products.index'), 'label' => 'Productos', 'icon' => 'bi-box-seam'],
                 ['id' => 'dashboardStock', 'route' => route('stock.index'), 'label' => 'Inventario / stock', 'icon' => 'bi-clipboard-data'],
                 ['id' => 'dashboardWarehouses', 'route' => route('warehouses.index'), 'label' => 'Depósitos', 'icon' => 'bi-building'],
                 ['id' => 'dashboardLocations', 'route' => route('locations.index'), 'label' => 'Ubicaciones', 'icon' => 'bi-geo-alt'],
-            ],
-        ];
+            ];
+        }
         if ($isAdmin) {
             $moduleGroups['Administración'] = [
                 ['id' => 'dashboardFinances', 'route' => route('finances.index'), 'label' => 'Finanzas', 'icon' => 'bi-graph-up'],
@@ -82,9 +90,11 @@
                             <span class="small" style="color: {{ $cardText }};">Abre un turno antes de vender.</span>
                         @endif
                     </div>
+                    @if($canSell)
                     <a href="{{ route('pos.index') }}" class="btn btn-accent w-100 w-sm-auto" style="background: {{ $themeAccent }}; border-color: {{ $themeAccent }}; color: {{ $accentTextColor }};">
                         <i class="bi bi-cart-check"></i> {{ $activeShift ? 'Ir al TPV' : 'Abrir caja' }}
                     </a>
+                    @endif
                 </div>
             </div>
 
