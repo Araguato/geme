@@ -144,7 +144,9 @@
                             }
                         @endphp
                         @php
-                            $stockLocations = $product->stockItems->filter(fn($si) => (float) $si->quantity > 0)->values();
+                            $stockLocations = $product->stockItems
+                                ->filter(fn($si) => (float) $si->quantity > 0 && (!$shopWarehouseId || $si->warehouse_id == $shopWarehouseId))
+                                ->values();
                             $stockData = $stockLocations->map(fn($si) => [
                                 'warehouse_id' => $si->warehouse_id,
                                 'warehouse_name' => $si->warehouse?->name ?? 'Sin depósito',
@@ -177,6 +179,7 @@
                                         data-id="{{ $product->id }}"
                                         data-name="{{ $displayName }}"
                                         data-price="{{ $product->price }}"
+                                        data-price-editable="{{ ($canChangePrice || $product->is_price_change_allowed) ? '1' : '0' }}"
                                         data-stock-locations='{{ $stockData }}'>
                                     <div class="d-flex justify-content-between">
                                         <span class="fw-medium">{{ $displayName }}</span>
@@ -346,7 +349,7 @@
                 tr.innerHTML = `
                     <td>${item.name}${locationLabel}</td>
                     <td><input type="number" step="0.001" min="0.001" name="items[${idx}][quantity]" class="form-control form-control-sm qty-input" value="${item.qty}" data-idx="${idx}"></td>
-                    <td><input type="number" step="0.01" min="0" name="items[${idx}][unit_price]" class="form-control form-control-sm price-input" value="${item.price.toFixed(2)}" data-idx="${idx}"></td>
+                    <td><input type="number" step="0.01" min="0" name="items[${idx}][unit_price]" class="form-control form-control-sm price-input" value="${item.price.toFixed(2)}" data-idx="${idx}" ${item.priceEditable ? '' : 'readonly tabindex="-1" title="Precio fijo"'}></td>
                     <td class="line-total">${lineTotal.toFixed(2)}</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-danger remove-item" data-idx="${idx}">X</button>
@@ -362,12 +365,12 @@
         paymentAmount.value = total.toFixed(2);
     }
 
-    function addProductToCart(id, name, price, warehouseId, warehouseName, locationId, locationName) {
+    function addProductToCart(id, name, price, warehouseId, warehouseName, locationId, locationName, priceEditable) {
         const existing = cart.find(i => i.id === id && i.warehouse_id == warehouseId && i.location_id == locationId);
         if (existing) {
             existing.qty += 1;
         } else {
-            cart.push({ id, name, price, qty: 1, warehouse_id: warehouseId, warehouse_name: warehouseName, location_id: locationId, location_name: locationName });
+            cart.push({ id, name, price, qty: 1, warehouse_id: warehouseId, warehouse_name: warehouseName, location_id: locationId, location_name: locationName, priceEditable });
         }
         render();
     }
@@ -377,14 +380,15 @@
         const id = btn.dataset.id;
         const name = btn.dataset.name;
         const price = parseFloat(btn.dataset.price);
+        const priceEditable = btn.dataset.priceEditable === '1';
 
         if (stockLocations.length === 0) {
-            addProductToCart(id, name, price, null, null, null, null);
+            addProductToCart(id, name, price, null, null, null, null, priceEditable);
             return;
         }
         if (stockLocations.length === 1) {
             const loc = stockLocations[0];
-            addProductToCart(id, name, price, loc.warehouse_id, loc.warehouse_name, loc.location_id, loc.location_name);
+            addProductToCart(id, name, price, loc.warehouse_id, loc.warehouse_name, loc.location_id, loc.location_name, priceEditable);
             return;
         }
 
@@ -397,7 +401,7 @@
             item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
             item.innerHTML = `<span><strong>${loc.warehouse_name}</strong> &mdash; ${loc.location_name}</span><span class="badge bg-primary">Stock: ${loc.quantity}</span>`;
             item.addEventListener('click', function() {
-                addProductToCart(id, name, price, loc.warehouse_id, loc.warehouse_name, loc.location_id, loc.location_name);
+                addProductToCart(id, name, price, loc.warehouse_id, loc.warehouse_name, loc.location_id, loc.location_name, priceEditable);
                 const modal = bootstrap.Modal.getInstance(document.getElementById('locationSelectModal'));
                 modal.hide();
             });

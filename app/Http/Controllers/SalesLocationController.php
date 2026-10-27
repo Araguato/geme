@@ -3,19 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\SalesLocation;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 
 class SalesLocationController extends Controller
 {
     public function index()
     {
-        $locations = SalesLocation::orderBy('name')->get();
+        $locations = SalesLocation::with('warehouse')->orderBy('name')->get();
         return view('admin.sales-locations.index', compact('locations'));
     }
 
     public function create()
     {
-        return view('admin.sales-locations.form');
+        $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.sales-locations.form', compact('warehouses'));
     }
 
     public function store(Request $request)
@@ -25,6 +28,7 @@ class SalesLocationController extends Controller
             'code' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'is_active' => 'boolean',
         ]);
 
@@ -36,7 +40,9 @@ class SalesLocationController extends Controller
 
     public function edit(SalesLocation $salesLocation)
     {
-        return view('admin.sales-locations.form', ['location' => $salesLocation]);
+        $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.sales-locations.form', ['location' => $salesLocation, 'warehouses' => $warehouses]);
     }
 
     public function update(Request $request, SalesLocation $salesLocation)
@@ -46,6 +52,7 @@ class SalesLocationController extends Controller
             'code' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'is_active' => 'boolean',
         ]);
 

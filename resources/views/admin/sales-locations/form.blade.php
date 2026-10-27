@@ -35,6 +35,16 @@
             <label class="form-label">Teléfono</label>
             <input type="text" name="phone" class="form-control" value="{{ old('phone', $location->phone ?? '') }}">
         </div>
+        <div class="mb-3">
+            <label class="form-label">Depósito del negocio</label>
+            <select name="warehouse_id" class="form-select">
+                <option value="">Todos los depósitos</option>
+                @foreach($warehouses as $warehouse)
+                    <option value="{{ $warehouse->id }}" @selected(old('warehouse_id', $location->warehouse_id ?? null) == $warehouse->id)>{{ $warehouse->name }}</option>
+                @endforeach
+            </select>
+            <div class="form-text">Con la caja abierta aquí, el TPV solo muestra y descuenta el stock de este depósito.</div>
+        </div>
         <div class="mb-3 form-check">
             <input type="checkbox" name="is_active" id="is_active" class="form-check-input" value="1" {{ old('is_active', $location->is_active ?? true) ? 'checked' : '' }}>
             <label for="is_active" class="form-check-label">Activo</label>

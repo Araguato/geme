@@ -17,6 +17,7 @@
                 <th>Código</th>
                 <th>Dirección</th>
                 <th>Teléfono</th>
+                <th>Depósito</th>
                 <th>Activo</th>
                 <th class="text-end">Acciones</th>
             </tr>
@@ -28,6 +29,7 @@
                     <td>{{ $location->code ?? '—' }}</td>
                     <td>{{ $location->address ?? '—' }}</td>
                     <td>{{ $location->phone ?? '—' }}</td>
+                    <td>{{ $location->warehouse?->name ?? 'Todos' }}</td>
                     <td>
                         @if($location->is_active)
                             <span class="badge bg-success">Sí</span>
@@ -46,7 +48,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="text-muted">No hay ubicaciones de venta registradas.</td>
+                    <td colspan="7" class="text-muted">No hay ubicaciones de venta registradas.</td>
                 </tr>
             @endforelse
         </tbody>

@@ -247,7 +247,7 @@
                                 </td>
                                 <td><input type="text" name="update_variants[{{ $variant->id }}][sku]" class="form-control form-control-sm" value="{{ $variant->sku }}"></td>
                                 <td><input type="number" step="0.01" min="0" name="update_variants[{{ $variant->id }}][price]" class="form-control form-control-sm" value="{{ number_format($variant->price, 2, '.', '') }}"></td>
-                                <td><input type="number" min="0" name="update_variants[{{ $variant->id }}][stock_quantity]" class="form-control form-control-sm" value="{{ $variant->stock_quantity }}"></td>
+                                <td><input type="number" min="0" step="any" name="update_variants[{{ $variant->id }}][stock_quantity]" class="form-control form-control-sm" value="{{ (float) $variant->stock_quantity }}"><input type="hidden" name="update_variants[{{ $variant->id }}][stock_quantity_original]" value="{{ (float) $variant->stock_quantity }}"></td>
                                 <td class="text-center">
                                     <button type="button" class="btn btn-sm btn-outline-danger delete-variant" data-id="{{ $variant->id }}" title="Eliminar variante">
                                         <i class="bi bi-trash"></i>

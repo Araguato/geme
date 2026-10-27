@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Location;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -9,6 +10,7 @@ use App\Models\Recipe;
 use App\Models\StockItem;
 use App\Models\StockMovement;
 use App\Models\SupplierInvoice;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 
 class InventoryService
@@ -58,7 +60,9 @@ class InventoryService
     /**
      * Descuenta del inventario una línea vendida en el TPV.
      * Usa el depósito/ubicación elegidos; si no vienen (o no coinciden), toma la
-     * ubicación con más existencias del producto. Registra el movimiento en el kardex.
+     * ubicación con más existencias del producto. Con $restrictWarehouseId (depósito
+     * del negocio donde está abierta la caja) solo descuenta de ese depósito.
+     * Registra el movimiento en el kardex.
      */
     public static function consumeSaleItem(
         Product $product,
@@ -66,7 +70,8 @@ class InventoryService
         ?int $warehouseId,
         ?int $locationId,
         Order $order,
-        ?int $userId = null
+        ?int $userId = null,
+        ?int $restrictWarehouseId = null
     ): void {
         if ($quantity <= 0) {
             return;
@@ -75,6 +80,11 @@ class InventoryService
         if ($product->is_prepared) {
             self::consumePreparedProduct($product, $quantity, $userId, $order);
             return;
+        }
+
+        if ($restrictWarehouseId && $warehouseId && (int) $warehouseId !== $restrictWarehouseId) {
+            $warehouseId = null;
+            $locationId = null;
         }
 
         $stockItem = null;
@@ -88,6 +98,7 @@ class InventoryService
 
         if (!$stockItem) {
             $stockItem = StockItem::where('product_id', $product->id)
+                ->when($restrictWarehouseId, fn ($q) => $q->where('warehouse_id', $restrictWarehouseId))
                 ->orderByDesc('quantity')
                 ->lockForUpdate()
                 ->first();
@@ -99,16 +110,11 @@ class InventoryService
                 return;
             }
 
-            $stockItem = StockItem::create([
-                'product_id' => $product->id,
-                'warehouse_id' => $warehouseId,
-                'location_id' => $locationId,
-                'unit_id' => $product->stock_unit_id,
-                'quantity' => 0,
-                'unit' => $product->default_unit ?: null,
-                'average_cost' => 0,
-                'min_quantity' => 0,
-            ]);
+            if (!$warehouseId || !$locationId) {
+                [$warehouseId, $locationId] = self::defaultLocation($restrictWarehouseId);
+            }
+
+            $stockItem = self::newStockItem($product, $warehouseId, $locationId);
         }
 
         $unitCost = (float) $stockItem->average_cost;
@@ -134,6 +140,112 @@ class InventoryService
             'reference_type' => 'order',
             'reference_id' => $order->id,
             'performed_by' => $userId,
+        ]);
+
+        self::syncStockQuantity($product);
+    }
+
+    /**
+     * Fija la existencia total de un producto (formulario de variantes, importación CSV).
+     * La diferencia contra el stock actual se registra como ajuste en el kardex, en la
+     * ubicación con más existencias o, si no tiene ninguna, en el depósito principal.
+     */
+    public static function setProductQuantity(Product $product, float $target, string $reason, ?int $userId = null): void
+    {
+        $target = max(0, $target);
+
+        DB::transaction(function () use ($product, $target, $reason, $userId) {
+            $current = (float) StockItem::where('product_id', $product->id)->lockForUpdate()->sum('quantity');
+            $diff = round($target - $current, 3);
+
+            if ($diff != 0) {
+                $stockItem = StockItem::where('product_id', $product->id)->orderByDesc('quantity')->first();
+                if (!$stockItem) {
+                    [$warehouseId, $locationId] = self::defaultLocation();
+                    $stockItem = self::newStockItem($product, $warehouseId, $locationId);
+                    $stockItem->average_cost = (float) ($product->cost ?? 0);
+                }
+
+                $unitCost = (float) $stockItem->average_cost;
+                $newQty = max(0, (float) $stockItem->quantity + $diff);
+                $stockItem->quantity = $newQty;
+                $stockItem->save();
+
+                StockMovement::create([
+                    'product_id' => $product->id,
+                    'warehouse_id' => $stockItem->warehouse_id,
+                    'location_id' => $stockItem->location_id,
+                    'unit_id' => $stockItem->unit_id,
+                    'movement_date' => now(),
+                    'type' => 'adjustment',
+                    'reason' => $reason,
+                    'quantity' => $diff,
+                    'unit' => $stockItem->unit,
+                    'unit_cost' => $unitCost,
+                    'total_cost' => $diff * $unitCost,
+                    'running_quantity' => $newQty,
+                    'running_average_cost' => $unitCost,
+                    'reference_type' => 'product',
+                    'reference_id' => $product->id,
+                    'performed_by' => $userId,
+                ]);
+            }
+
+            self::syncStockQuantity($product);
+        });
+    }
+
+    /**
+     * products.stock_quantity es un resumen: la suma de las existencias por ubicación.
+     */
+    public static function syncStockQuantity(Product $product): void
+    {
+        $total = (float) StockItem::where('product_id', $product->id)->sum('quantity');
+        Product::whereKey($product->id)->update(['stock_quantity' => $total]);
+        $product->stock_quantity = $total;
+    }
+
+    /**
+     * Depósito y ubicación por defecto: el depósito indicado o el principal (código MAIN),
+     * y su primera ubicación activa. Los crea si no existen.
+     *
+     * @return array{0:int,1:int}
+     */
+    public static function defaultLocation(?int $warehouseId = null): array
+    {
+        $warehouse = $warehouseId
+            ? Warehouse::find($warehouseId)
+            : (Warehouse::where('code', 'MAIN')->first()
+                ?? Warehouse::where('is_active', true)->orderBy('sort_order')->orderBy('id')->first());
+
+        if (!$warehouse) {
+            $warehouse = Warehouse::create(['code' => 'MAIN', 'name' => 'Almacén principal', 'is_active' => true]);
+        }
+
+        $location = Location::where('warehouse_id', $warehouse->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->first()
+            ?? Location::firstOrCreate(
+                ['warehouse_id' => $warehouse->id, 'code' => 'GEN'],
+                ['name' => 'General', 'is_active' => true]
+            );
+
+        return [$warehouse->id, $location->id];
+    }
+
+    protected static function newStockItem(Product $product, ?int $warehouseId, ?int $locationId): StockItem
+    {
+        return StockItem::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouseId,
+            'location_id' => $locationId,
+            'unit_id' => $product->stock_unit_id,
+            'quantity' => 0,
+            'unit' => $product->default_unit ?: null,
+            'average_cost' => 0,
+            'min_quantity' => 0,
         ]);
     }
 
@@ -280,5 +392,7 @@ class InventoryService
             'reference_id' => $referenceId,
             'performed_by' => $userId,
         ]);
+
+        self::syncStockQuantity($product);
     }
 }

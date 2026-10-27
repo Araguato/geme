@@ -10,6 +10,7 @@ use App\Models\AuditLog;
 use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Models\Location;
+use App\Services\InventoryService;
 use App\Services\TranslationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -219,7 +220,7 @@ class ProductController extends Controller
         $variantAttributes = $request->input('variant_attributes', []);
         $variants = $request->input('variants', []);
 
-        DB::transaction(function () use ($data, $barcodes, $uploadedImages, $legacyImage, $hasVariants, $variantAttributes, $variants) {
+        DB::transaction(function () use ($data, $barcodes, $uploadedImages, $legacyImage, $hasVariants, $variantAttributes, $variants, $request) {
             $product = Product::create($data);
 
             $rows = [];
@@ -273,11 +274,12 @@ class ProductController extends Controller
                         'is_service' => $product->is_service,
                         'is_tax_inclusive' => $product->is_tax_inclusive,
                         'is_price_change_allowed' => $product->is_price_change_allowed,
-                        'stock_quantity' => $variant['stock_quantity'] ?? 0,
+                        'stock_quantity' => 0,
                         'image_path' => $product->image_path,
                         'variant_attributes' => json_decode($variant['variant_attributes'], true),
                     ];
-                    Product::create($variantData);
+                    $newVariant = Product::create($variantData);
+                    InventoryService::setProductQuantity($newVariant, (float) ($variant['stock_quantity'] ?? 0), 'initial_stock', $request->user()?->id);
                 }
             }
         });
@@ -477,7 +479,7 @@ class ProductController extends Controller
             'default_unit',
         ]);
 
-        DB::transaction(function () use ($product, $data, $barcodes, $uploadedImages, $legacyImage, $mainImageId, $deleteImages, $variantAttributes, $updateVariants, $newVariants, $deleteVariants) {
+        DB::transaction(function () use ($product, $data, $barcodes, $uploadedImages, $legacyImage, $mainImageId, $deleteImages, $variantAttributes, $updateVariants, $newVariants, $deleteVariants, $request) {
             $product->update($data);
 
             $rows = [];
@@ -536,11 +538,15 @@ class ProductController extends Controller
                         if (isset($variantData['price'])) {
                             $update['price'] = (float) $variantData['price'];
                         }
-                        if (isset($variantData['stock_quantity'])) {
-                            $update['stock_quantity'] = (float) $variantData['stock_quantity'];
-                        }
                         if (count($update) > 0) {
                             $variant->update($update);
+                        }
+                        // Solo si el usuario cambió la cifra: así no se pisan ventas hechas mientras el formulario estaba abierto
+                        $stockChanged = isset($variantData['stock_quantity'])
+                            && (!isset($variantData['stock_quantity_original'])
+                                || (float) $variantData['stock_quantity'] !== (float) $variantData['stock_quantity_original']);
+                        if ($stockChanged) {
+                            InventoryService::setProductQuantity($variant, (float) $variantData['stock_quantity'], 'variant_edit', $request->user()?->id);
                         }
                     }
                 }
@@ -551,7 +557,7 @@ class ProductController extends Controller
                     if ($sku === '') {
                         $sku = null;
                     }
-                    Product::create([
+                    $newVariant = Product::create([
                         'parent_product_id' => $product->id,
                         'category_id' => $product->category_id,
                         'name' => $product->name,
@@ -566,10 +572,11 @@ class ProductController extends Controller
                         'is_service' => $product->is_service,
                         'is_tax_inclusive' => $product->is_tax_inclusive,
                         'is_price_change_allowed' => $product->is_price_change_allowed,
-                        'stock_quantity' => $variantData['stock_quantity'] ?? 0,
+                        'stock_quantity' => 0,
                         'image_path' => $product->image_path,
                         'variant_attributes' => json_decode($variantData['variant_attributes'], true),
                     ]);
+                    InventoryService::setProductQuantity($newVariant, (float) ($variantData['stock_quantity'] ?? 0), 'initial_stock', $request->user()?->id);
                 }
 
                 // Eliminar variantes marcadas

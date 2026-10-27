@@ -8,6 +8,7 @@ use App\Models\StockMovement;
 use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Models\Location;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -200,5 +201,7 @@ class StockController extends Controller
             'reference_id' => null,
             'performed_by' => $userId,
         ], $locationDetails));
+
+        InventoryService::syncStockQuantity($product);
     }
 }

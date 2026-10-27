@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\ProductBarcode;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductImportExportController extends Controller
@@ -281,11 +283,16 @@ class ProductImportExportController extends Controller
                     continue;
                 }
 
-                $product->update($attrs);
+                $product->update(Arr::except($attrs, ['stock_quantity']));
                 $updated++;
             } else {
-                $product = Product::create($attrs);
+                $product = Product::create(Arr::except($attrs, ['stock_quantity']));
                 $created++;
+            }
+
+            // El stock se carga en inventario (kardex) y no solo en el campo del producto
+            if ($stockQuantity !== '') {
+                InventoryService::setProductQuantity($product, (float) $stockQuantity, 'csv_import', $request->user()?->id);
             }
 
             // Si tenemos un SKU numérico, aseguramos un barcode asociado para el TPV.

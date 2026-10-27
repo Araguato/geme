@@ -56,9 +56,14 @@ class PosController extends Controller
             }
         }
 
+        // Depósito del negocio donde está abierta la caja: el TPV solo vende ese stock
+        $shopWarehouseId = $activeShift?->salesLocation?->warehouse_id;
+        $canChangePrice = $this->canChangePrice();
+
         return view('pos.index', compact(
             'activeShift', 'products', 'customers', 'salesLocations',
-            'paymentSummary', 'casheaInitial', 'casheaFinanced', 'totalReceived'
+            'paymentSummary', 'casheaInitial', 'casheaFinanced', 'totalReceived',
+            'shopWarehouseId', 'canChangePrice'
         ));
     }
 
@@ -84,7 +89,10 @@ class PosController extends Controller
 
         $activeShift = CashShift::where('is_active', true)->latest()->first();
 
-        $order = DB::transaction(function () use ($data, $activeShift, $isCashea) {
+        $canChangePrice = $this->canChangePrice();
+        $shopWarehouseId = $activeShift?->salesLocation?->warehouse_id;
+
+        $order = DB::transaction(function () use ($data, $activeShift, $isCashea, $canChangePrice, $shopWarehouseId) {
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'user_id' => Auth::id(),
@@ -107,7 +115,10 @@ class PosController extends Controller
             foreach ($data['items'] as $item) {
                 $product = Product::find($item['product_id']);
                 $qty = (float) $item['quantity'];
-                $price = (float) $item['unit_price'];
+                // El precio enviado solo se acepta si quien vende puede cambiarlo
+                $price = ($canChangePrice || $product->is_price_change_allowed)
+                    ? (float) $item['unit_price']
+                    : (float) $product->price;
                 $taxRate = (float) ($product->tax_rate ?? 0);
                 $lineSubtotal = round($qty * $price, 2);
                 $lineTax = round($lineSubtotal * ($taxRate / 100), 2);
@@ -127,7 +138,7 @@ class PosController extends Controller
                     'location_id' => $locationId,
                 ]);
 
-                InventoryService::consumeSaleItem($product, $qty, $warehouseId, $locationId, $order, Auth::id());
+                InventoryService::consumeSaleItem($product, $qty, $warehouseId, $locationId, $order, Auth::id(), $shopWarehouseId);
 
                 $subtotal += $lineSubtotal;
                 $tax += $lineTax;
@@ -172,6 +183,17 @@ class PosController extends Controller
     {
         $order->load(['items.product', 'salesLocation', 'user']);
         return view('pos.ticket', compact('order'));
+    }
+
+    /**
+     * Admin y supervisor pueden cambiar el precio de cualquier línea; el resto solo
+     * en productos marcados con "Cambio de precio permitido".
+     */
+    private function canChangePrice(): bool
+    {
+        $user = Auth::user();
+
+        return $user !== null && $user->hasAnyRole(['admin', 'supervisor']);
     }
 
     private function generateOrderNumber(): string
