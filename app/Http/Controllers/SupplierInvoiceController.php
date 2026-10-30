@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Setting;
+use App\Models\StockMovement;
 use App\Models\Supplier;
 use App\Models\SupplierInvoice;
 use App\Models\Warehouse;
@@ -78,6 +79,12 @@ class SupplierInvoiceController extends Controller
             'bcvRate' => $bcvRate,
             'prefetchedProducts' => $prefetchedProducts,
             'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(),
+            // Al editar se mantiene el depósito donde entró la mercancía
+            'selectedWarehouseId' => StockMovement::where('reference_type', 'supplier_invoice')
+                ->where('reference_id', $supplierInvoice->id)
+                ->where('type', 'in')
+                ->latest('id')
+                ->value('warehouse_id'),
             'mode' => 'edit',
         ]);
     }

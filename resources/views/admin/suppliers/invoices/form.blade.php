@@ -159,7 +159,7 @@
                     <option value="">Almacén principal</option>
                     @foreach($warehouses as $warehouse)
                         @continue($warehouse->code === 'MAIN')
-                        <option value="{{ $warehouse->id }}" @selected(old('warehouse_id') == $warehouse->id)>{{ $warehouse->name }}</option>
+                        <option value="{{ $warehouse->id }}" @selected(old('warehouse_id', $selectedWarehouseId ?? null) == $warehouse->id)>{{ $warehouse->name }}</option>
                     @endforeach
                 </select>
             </div>

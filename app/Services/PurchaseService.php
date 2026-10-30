@@ -26,8 +26,10 @@ class PurchaseService
             $invoice->fill($invoiceData);
             $invoice->save();
 
+            $reversedProductIds = [];
             if ($existingInvoice) {
                 $invoice->items()->delete();
+                $reversedProductIds = InventoryService::reversePurchaseEntries($invoice, $userId);
             }
 
             $itemsCollection = collect();
@@ -72,6 +74,8 @@ class PurchaseService
                     }
                 }
             }
+
+            InventoryService::assertPurchaseEditFits($reversedProductIds);
 
             $invoice->setRelation('items', $itemsCollection);
             $invoice->recalculateTotals();

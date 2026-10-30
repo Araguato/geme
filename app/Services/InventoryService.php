@@ -333,6 +333,101 @@ class InventoryService
     }
 
     /**
+     * Revierte lo que una factura sumó al inventario, antes de registrar sus renglones
+     * editados. Una fila puede quedar en negativo si ya se vendió parte de la mercancía;
+     * assertPurchaseEditFits comprueba el resultado al terminar.
+     * Devuelve los productos revertidos.
+     *
+     * @return array<int, int>
+     */
+    public static function reversePurchaseEntries(SupplierInvoice $invoice, ?int $userId = null): array
+    {
+        $entries = StockMovement::where('reference_type', 'supplier_invoice')
+            ->where('reference_id', $invoice->id)
+            ->get()
+            ->groupBy(fn (StockMovement $m) => $m->product_id . '-' . $m->warehouse_id . '-' . $m->location_id);
+
+        $productIds = [];
+
+        foreach ($entries as $movements) {
+            $net = round((float) $movements->sum('quantity'), 3);
+            if ($net <= 0) {
+                continue;
+            }
+
+            $entry = $movements->first();
+            $product = Product::find($entry->product_id);
+            if (!$product) {
+                continue;
+            }
+
+            // Las entradas antiguas no guardaban depósito: se revierten de la fila con más stock
+            $query = StockItem::where('product_id', $product->id)->orderByDesc('quantity')->lockForUpdate();
+            $stockItem = $entry->warehouse_id
+                ? (clone $query)->where('warehouse_id', $entry->warehouse_id)->where('location_id', $entry->location_id)->first()
+                : null;
+            $stockItem ??= $query->first();
+            if (!$stockItem) {
+                [$warehouseId, $locationId] = self::defaultLocation($entry->warehouse_id);
+                $stockItem = self::newStockItem($product, $warehouseId, $locationId);
+            }
+
+            $value = (float) $movements->sum('total_cost');
+            $oldQty = (float) $stockItem->quantity;
+            $oldAvg = (float) $stockItem->average_cost;
+            $newQty = round($oldQty - $net, 3);
+            $newAvg = $newQty > 0 ? max(0, ($oldQty * $oldAvg - $value) / $newQty) : $oldAvg;
+
+            $stockItem->quantity = $newQty;
+            $stockItem->average_cost = $newAvg;
+            $stockItem->save();
+
+            StockMovement::create([
+                'product_id' => $product->id,
+                'warehouse_id' => $stockItem->warehouse_id,
+                'location_id' => $stockItem->location_id,
+                'unit_id' => $stockItem->unit_id,
+                'movement_date' => now(),
+                'type' => 'out',
+                'reason' => 'purchase_edit',
+                'quantity' => -1 * $net,
+                'unit' => $stockItem->unit,
+                'unit_cost' => $value / $net,
+                'total_cost' => -1 * $value,
+                'running_quantity' => $newQty,
+                'running_average_cost' => $newAvg,
+                'reference_type' => 'supplier_invoice',
+                'reference_id' => $invoice->id,
+                'performed_by' => $userId,
+            ]);
+
+            self::syncStockQuantity($product);
+            $productIds[] = $product->id;
+        }
+
+        return array_values(array_unique($productIds));
+    }
+
+    /**
+     * Rechaza la edición si deja un producto en negativo: no se puede quitar de una
+     * factura mercancía que ya se vendió o se movió.
+     *
+     * @param array<int, int> $productIds
+     */
+    public static function assertPurchaseEditFits(array $productIds): void
+    {
+        $short = StockItem::whereIn('product_id', $productIds)->where('quantity', '<', 0)->with('product')->first();
+
+        if ($short) {
+            $name = $short->product?->name ?? 'Producto';
+
+            throw ValidationException::withMessages([
+                'items' => "{$name}: no se puede reducir la cantidad de la factura porque esa mercancía ya se vendió o se movió.",
+            ]);
+        }
+    }
+
+    /**
      * Descuenta los ingredientes de la receta del depósito del negocio. Un ingrediente
      * faltante no frena la venta: se descuenta lo que haya y se deja aviso en el log.
      */
@@ -387,17 +482,21 @@ class InventoryService
     ): void {
         [$warehouseId, $locationId] = self::defaultLocation($warehouseId);
 
-        $stockItem = StockItem::where('product_id', $product->id)
+        $rows = StockItem::where('product_id', $product->id)
             ->where('warehouse_id', $warehouseId)
             ->orderByDesc('quantity')
             ->lockForUpdate()
-            ->first()
+            ->get();
+
+        // Al editar una factura, la fila que quedó en negativo recibe primero la nueva entrada
+        $stockItem = $rows->first(fn (StockItem $row) => (float) $row->quantity < 0)
+            ?? $rows->first()
             ?? self::newStockItem($product, $warehouseId, $locationId);
 
         $oldQty = (float) $stockItem->quantity;
         $oldAvg = (float) $stockItem->average_cost;
         $newQty = $oldQty + $quantity;
-        $newAvg = ($oldQty * $oldAvg + $quantity * $unitCost) / $newQty;
+        $newAvg = $newQty > 0 ? ($oldQty * $oldAvg + $quantity * $unitCost) / $newQty : $oldAvg;
 
         $stockItem->quantity = $newQty;
         $stockItem->average_cost = $newAvg;

@@ -35,6 +35,7 @@ class WarehouseStockFlowTest extends TestCase
     private Location $cosmoShelf;
     private SalesLocation $saborShop;
     private SalesLocation $cosmoShop;
+    private Supplier $supplier;
 
     protected function setUp(): void
     {
@@ -267,6 +268,109 @@ class WarehouseStockFlowTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $this->assertEquals(4, (float) StockItem::where('product_id', $product->id)->where('warehouse_id', $this->cosmo->id)->value('quantity'));
+    }
+
+    private function createInvoice(Product $product, float $qty, float $cost = 2, ?Warehouse $warehouse = null): SupplierInvoice
+    {
+        $party = \App\Models\Party::create(['name' => 'Proveedor', 'is_active' => true]);
+        $this->supplier = Supplier::create(['party_id' => $party->id]);
+
+        $this->actingAs($this->user('admin'))->post('/supplier-invoices', $this->invoicePayload($product, $qty, $cost, $warehouse))
+            ->assertSessionHasNoErrors();
+
+        return SupplierInvoice::latest('id')->firstOrFail();
+    }
+
+    private function invoicePayload(Product $product, float $qty, float $cost = 2, ?Warehouse $warehouse = null): array
+    {
+        return [
+            'supplier_id' => $this->supplier->id,
+            'date' => now()->toDateString(),
+            'currency' => 'USD',
+            'doc_type' => 'FC',
+            'status' => 'pendiente',
+            'warehouse_id' => ($warehouse ?? $this->sabor)->id,
+            'items' => [['product_id' => $product->id, 'quantity' => $qty, 'unit_cost' => $cost]],
+        ];
+    }
+
+    private function editInvoice(SupplierInvoice $invoice, array $payload)
+    {
+        return $this->actingAs($this->user('admin'))->from('/supplier-invoices')->put("/supplier-invoices/{$invoice->id}", $payload);
+    }
+
+    public function test_editing_invoice_without_changes_does_not_add_stock_again(): void
+    {
+        $product = $this->product(['is_stock_tracked' => true]);
+        $invoice = $this->createInvoice($product, 10);
+
+        $this->editInvoice($invoice, $this->invoicePayload($product, 10))->assertSessionHasNoErrors();
+        $this->editInvoice($invoice, $this->invoicePayload($product, 10))->assertSessionHasNoErrors();
+
+        $this->assertEquals(10, (float) $product->fresh()->stock_quantity);
+        $this->assertEquals(2, (float) StockItem::where('product_id', $product->id)->value('average_cost'));
+        $this->assertEquals(10, (float) StockMovement::where('product_id', $product->id)->sum('quantity'));
+    }
+
+    public function test_editing_invoice_applies_only_the_difference(): void
+    {
+        $product = $this->product(['is_stock_tracked' => true]);
+        $invoice = $this->createInvoice($product, 10);
+
+        $this->editInvoice($invoice, $this->invoicePayload($product, 12))->assertSessionHasNoErrors();
+        $this->assertEquals(12, (float) $product->fresh()->stock_quantity);
+
+        $this->editInvoice($invoice, $this->invoicePayload($product, 7))->assertSessionHasNoErrors();
+        $this->assertEquals(7, (float) $product->fresh()->stock_quantity);
+    }
+
+    public function test_replacing_invoice_product_removes_the_old_entry(): void
+    {
+        $first = $this->product(['name' => 'Primero', 'is_stock_tracked' => true]);
+        $second = $this->product(['name' => 'Segundo', 'is_stock_tracked' => true]);
+        $invoice = $this->createInvoice($first, 10);
+
+        $this->editInvoice($invoice, $this->invoicePayload($second, 4))->assertSessionHasNoErrors();
+
+        $this->assertEquals(0, (float) $first->fresh()->stock_quantity);
+        $this->assertEquals(4, (float) $second->fresh()->stock_quantity);
+    }
+
+    public function test_editing_invoice_respects_units_already_sold(): void
+    {
+        $cashier = $this->user();
+        $product = $this->product(['is_stock_tracked' => true]);
+        $invoice = $this->createInvoice($product, 10);
+        $this->openShift($cashier, $this->saborShop);
+        $this->sell($cashier, $product, 8)->assertSessionHasNoErrors();
+
+        $this->editInvoice($invoice, $this->invoicePayload($product, 12))->assertSessionHasNoErrors();
+        $this->assertEquals(4, (float) $product->fresh()->stock_quantity);
+    }
+
+    public function test_editing_invoice_below_sold_units_is_rejected_without_changes(): void
+    {
+        $cashier = $this->user();
+        $product = $this->product(['is_stock_tracked' => true]);
+        $invoice = $this->createInvoice($product, 10);
+        $this->openShift($cashier, $this->saborShop);
+        $this->sell($cashier, $product, 8)->assertSessionHasNoErrors();
+        $movements = StockMovement::count();
+
+        $this->editInvoice($invoice, $this->invoicePayload($product, 1))->assertSessionHasErrors('items');
+
+        $this->assertEquals(2, (float) StockItem::where('product_id', $product->id)->value('quantity'));
+        $this->assertEquals($movements, StockMovement::count());
+        $this->assertEquals(1, $invoice->items()->count());
+    }
+
+    public function test_edit_form_keeps_the_warehouse_of_the_original_entry(): void
+    {
+        $product = $this->product(['is_stock_tracked' => true]);
+        $invoice = $this->createInvoice($product, 5, 2, $this->cosmo);
+
+        $this->actingAs($this->user('admin'))->get("/supplier-invoices/{$invoice->id}/edit")->assertOk()
+            ->assertSee('<option value="' . $this->cosmo->id . '" selected', false);
     }
 
     public function test_transfer_cannot_exceed_origin_stock(): void
