@@ -23,6 +23,23 @@
     <div class="alert alert-danger">{{ session('error') }}</div>
 @endif
 
+@if($errors->any())
+    <div class="alert alert-danger">
+        <ul class="mb-0">
+            @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+@if($activeShift && !$shopWarehouseId)
+    <div class="alert alert-warning">
+        Este negocio no tiene depósito asignado: el TPV vende de todos los depósitos.
+        Asígnale el suyo en <strong>Ubicaciones de venta</strong>.
+    </div>
+@endif
+
 @if(!$activeShift)
 <div class="card mb-4">
     <div class="card-body">
@@ -193,6 +210,8 @@
                                                 {{ $si->warehouse?->name ?? 'Sin depósito' }}/{{ $si->location?->name ?? 'Sin ubicación' }}: {{ number_format($si->quantity, 2) }}{{ $loop->last ? '' : ' | ' }}
                                             @endforeach
                                         </div>
+                                    @elseif(!$product->is_prepared && ($product->is_stock_tracked || $product->stockItems->isNotEmpty()))
+                                        <div class="small text-danger mt-1">Sin stock en este depósito</div>
                                     @endif
                                 </button>
                             </div>

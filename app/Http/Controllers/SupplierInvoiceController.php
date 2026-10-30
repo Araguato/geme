@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Supplier;
 use App\Models\SupplierInvoice;
+use App\Models\Warehouse;
 use App\Services\PurchaseService;
 use Illuminate\Http\Request;
 
@@ -42,6 +43,7 @@ class SupplierInvoiceController extends Controller
             'selectedSupplierId' => $selectedSupplierId,
             'bcvRate' => $bcvRate,
             'prefetchedProducts' => $prefetchedProducts,
+            'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(),
             'mode' => 'create',
         ]);
     }
@@ -54,6 +56,7 @@ class SupplierInvoiceController extends Controller
             invoiceData: $invoiceData,
             itemsData: $itemsData,
             userId: $request->user()?->id,
+            warehouseId: $request->integer('warehouse_id') ?: null,
         );
 
         return redirect()->route('supplier-invoices.show', $invoice)
@@ -74,6 +77,7 @@ class SupplierInvoiceController extends Controller
             'selectedSupplierId' => $supplierInvoice->supplier_id,
             'bcvRate' => $bcvRate,
             'prefetchedProducts' => $prefetchedProducts,
+            'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(),
             'mode' => 'edit',
         ]);
     }
@@ -87,6 +91,7 @@ class SupplierInvoiceController extends Controller
             itemsData: $itemsData,
             userId: $request->user()?->id,
             existingInvoice: $supplierInvoice,
+            warehouseId: $request->integer('warehouse_id') ?: null,
         );
 
         return redirect()->route('supplier-invoices.show', $invoice)
@@ -124,6 +129,7 @@ class SupplierInvoiceController extends Controller
             'status' => 'nullable|string|max:20',
             'notes' => 'nullable|string',
             'withholding_amount' => 'nullable|numeric|min:0',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.description' => 'nullable|string|max:255',
@@ -159,7 +165,7 @@ class SupplierInvoiceController extends Controller
         $data['withholding_amount'] = $data['withholding_amount'] ?? 0;
 
         $items = $data['items'];
-        unset($data['items']);
+        unset($data['items'], $data['warehouse_id']);
 
         return [$data, $items];
     }

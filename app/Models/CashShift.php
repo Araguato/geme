@@ -24,6 +24,21 @@ class CashShift extends Model
         'closed_at' => 'datetime',
     ];
 
+    /**
+     * Turno abierto del usuario: cada cajero vende y cierra solo su propia caja.
+     */
+    public static function activeFor(?User $user): ?self
+    {
+        if (!$user) {
+            return null;
+        }
+
+        return static::where('is_active', true)
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

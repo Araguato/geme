@@ -110,6 +110,7 @@ class StockUnificationAndPosPriceTest extends TestCase
 
         $supervisor = $this->userWithRoles(['supervisor']);
         $fixed = $this->product(['name' => 'Cargador', 'price' => 10]);
+        $this->openShift($supervisor);
         $this->sell($supervisor, $fixed, 1, 8)->assertSessionHasNoErrors();
         $this->assertEquals(8, (float) OrderItem::where('product_id', $fixed->id)->value('unit_price'));
     }

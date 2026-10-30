@@ -11,7 +11,7 @@ class LocationSeeder extends Seeder
     public function run(): void
     {
         $warehouse = Warehouse::firstOrCreate(
-            ['code' => 'PRINCIPAL'],
+            ['code' => 'MAIN'],
             [
                 'name' => 'Almacén principal',
                 'description' => 'Depósito principal del negocio',
@@ -22,13 +22,6 @@ class LocationSeeder extends Seeder
         );
 
         $locations = [
-            [
-                'code' => 'GENERAL',
-                'name' => 'General',
-                'description' => 'Ubicación general sin sección específica',
-                'is_active' => true,
-                'sort_order' => 0,
-            ],
             [
                 'code' => 'A-3-12',
                 'name' => 'Pasillo A - Estante 3 - Vitrina 12',
@@ -71,9 +64,10 @@ class LocationSeeder extends Seeder
         ];
 
         foreach ($locations as $location) {
-            Location::updateOrCreate(
+            // firstOrCreate: el seeder corre en cada arranque y no debe pisar lo que edite el usuario
+            Location::firstOrCreate(
                 ['code' => $location['code'], 'warehouse_id' => $warehouse->id],
-                array_merge($location, ['warehouse_id' => $warehouse->id])
+                $location
             );
         }
     }

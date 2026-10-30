@@ -45,7 +45,7 @@ class DashboardController extends Controller
         $pendingInvoices = SupplierInvoice::where('status', 'pending')->count();
         $pendingInvoiceAmount = SupplierInvoice::where('status', 'pending')->sum('total_amount');
 
-        $activeShift = CashShift::where('is_active', true)->latest()->first();
+        $activeShift = CashShift::activeFor(auth()->user());
 
         $recentSales = Order::where('status', 'completed')
             ->orderByDesc('created_at')

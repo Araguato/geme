@@ -18,9 +18,10 @@ class PurchaseService
         array $invoiceData,
         array $itemsData,
         ?int $userId = null,
-        ?SupplierInvoice $existingInvoice = null
+        ?SupplierInvoice $existingInvoice = null,
+        ?int $warehouseId = null
     ): SupplierInvoice {
-        return DB::transaction(function () use ($invoiceData, $itemsData, $userId, $existingInvoice) {
+        return DB::transaction(function () use ($invoiceData, $itemsData, $userId, $existingInvoice, $warehouseId) {
             $invoice = $existingInvoice ?? new SupplierInvoice();
             $invoice->fill($invoiceData);
             $invoice->save();
@@ -66,6 +67,7 @@ class PurchaseService
                             invoice: $invoice,
                             userId: $userId,
                             unitOverride: $invoiceItem->unit,
+                            warehouseId: $warehouseId,
                         );
                     }
                 }

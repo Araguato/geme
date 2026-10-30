@@ -152,6 +152,19 @@
 
         <h2 class="h5 mb-3">Renglones de la factura</h2>
 
+        <div class="row mb-3">
+            <div class="col-md-5">
+                <label class="form-label">Depósito que recibe la mercancía</label>
+                <select name="warehouse_id" class="form-select">
+                    <option value="">Almacén principal</option>
+                    @foreach($warehouses as $warehouse)
+                        @continue($warehouse->code === 'MAIN')
+                        <option value="{{ $warehouse->id }}" @selected(old('warehouse_id') == $warehouse->id)>{{ $warehouse->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-bordered align-middle" id="invoice-items-table">
                 <thead class="table-light">

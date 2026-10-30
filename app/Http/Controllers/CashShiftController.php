@@ -17,6 +17,10 @@ class CashShiftController extends Controller
             'sales_location_id' => 'required|exists:sales_locations,id',
         ]);
 
+        if (CashShift::activeFor(Auth::user())) {
+            return redirect()->route('pos.index')->with('error', 'Ya tienes un turno de caja abierto.');
+        }
+
         CashShift::create([
             'user_id' => Auth::id(),
             'sales_location_id' => $data['sales_location_id'],
@@ -33,7 +37,7 @@ class CashShiftController extends Controller
             'closing_amount' => 'required|numeric|min:0',
         ]);
 
-        $shift = CashShift::where('is_active', true)->latest()->first();
+        $shift = CashShift::activeFor(Auth::user());
         if ($shift) {
             $shift->update([
                 'closed_at' => now(),

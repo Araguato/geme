@@ -20,7 +20,7 @@ class PosController extends Controller
 {
     public function index()
     {
-        $activeShift = CashShift::where('is_active', true)->latest()->first();
+        $activeShift = CashShift::activeFor(Auth::user());
         $products = Product::where('is_active', true)
             ->where('is_raw_material', false)
             ->with(['images', 'mainImage', 'parent', 'barcodes', 'stockItems.warehouse', 'stockItems.location'])
@@ -87,16 +87,19 @@ class PosController extends Controller
         $isCashea = $data['payment']['method'] === 'cashea';
         $orderTotal = 0;
 
-        $activeShift = CashShift::where('is_active', true)->latest()->first();
+        $activeShift = CashShift::activeFor(Auth::user());
+        if (!$activeShift) {
+            return redirect()->route('pos.index')->with('error', 'Abre tu turno de caja antes de registrar ventas.');
+        }
 
         $canChangePrice = $this->canChangePrice();
-        $shopWarehouseId = $activeShift?->salesLocation?->warehouse_id;
+        $shopWarehouseId = $activeShift->salesLocation?->warehouse_id;
 
         $order = DB::transaction(function () use ($data, $activeShift, $isCashea, $canChangePrice, $shopWarehouseId) {
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'user_id' => Auth::id(),
-                'sales_location_id' => $activeShift?->sales_location_id,
+                'sales_location_id' => $activeShift->sales_location_id,
                 'customer_name' => $data['customer_name'] ?? null,
                 'customer_party_id' => $data['customer_party_id'] ?? null,
                 'type' => 'pos',
@@ -106,7 +109,7 @@ class PosController extends Controller
                 'tax' => 0,
                 'discount' => 0,
                 'total' => 0,
-                'cash_shift_id' => $activeShift?->id,
+                'cash_shift_id' => $activeShift->id,
             ]);
 
             $subtotal = 0;
@@ -122,8 +125,17 @@ class PosController extends Controller
                 $taxRate = (float) ($product->tax_rate ?? 0);
                 $lineSubtotal = round($qty * $price, 2);
                 $lineTax = round($lineSubtotal * ($taxRate / 100), 2);
-                $warehouseId = $item['warehouse_id'] ?? null;
-                $locationId = $item['location_id'] ?? null;
+
+                // La línea guarda de dónde salió realmente el stock, no lo que mandó el formulario
+                $stockItem = InventoryService::consumeSaleItem(
+                    $product,
+                    $qty,
+                    $item['warehouse_id'] ?? null,
+                    $item['location_id'] ?? null,
+                    $order,
+                    Auth::id(),
+                    $shopWarehouseId
+                );
 
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -134,11 +146,9 @@ class PosController extends Controller
                     'tax_rate' => $taxRate,
                     'tax_amount' => $lineTax,
                     'total' => $lineSubtotal + $lineTax,
-                    'warehouse_id' => $warehouseId,
-                    'location_id' => $locationId,
+                    'warehouse_id' => $stockItem?->warehouse_id,
+                    'location_id' => $stockItem?->location_id,
                 ]);
-
-                InventoryService::consumeSaleItem($product, $qty, $warehouseId, $locationId, $order, Auth::id(), $shopWarehouseId);
 
                 $subtotal += $lineSubtotal;
                 $tax += $lineTax;
@@ -154,7 +164,7 @@ class PosController extends Controller
 
             $paymentData = [
                 'order_id' => $order->id,
-                'cash_shift_id' => $activeShift?->id,
+                'cash_shift_id' => $activeShift->id,
                 'method' => $data['payment']['method'],
                 'amount' => $data['payment']['amount'],
                 'reference' => $data['payment']['reference'] ?? null,

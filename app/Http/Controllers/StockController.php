@@ -12,6 +12,7 @@ use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class StockController extends Controller
 {
@@ -114,10 +115,32 @@ class StockController extends Controller
                 'section' => $data['section'] ?? null,
             ];
 
+            $this->assertLocationInWarehouse($locationId, $warehouseId, 'location_id');
+
             if ($type === 'transfer') {
                 if (!$warehouseId || !$toWarehouseId) {
-                    throw new \InvalidArgumentException('Para transferencias se requiere depósito origen y destino.');
+                    throw ValidationException::withMessages(['to_warehouse_id' => 'Para transferencias se requiere depósito origen y destino.']);
                 }
+                $this->assertLocationInWarehouse($toLocationId, $toWarehouseId, 'to_location_id');
+                // Sin ubicación destino, el stock entra a la primera ubicación del depósito
+                $toLocationId = $toLocationId ?? InventoryService::defaultLocation($toWarehouseId)[1];
+                if ((int) $warehouseId === (int) $toWarehouseId && (int) $locationId === (int) $toLocationId) {
+                    throw ValidationException::withMessages(['to_location_id' => 'El origen y el destino de la transferencia son iguales.']);
+                }
+            }
+
+            if (in_array($type, ['out', 'transfer'], true)) {
+                $available = (float) StockItem::where('product_id', $product->id)
+                    ->where('warehouse_id', $warehouseId)
+                    ->where('location_id', $locationId)
+                    ->lockForUpdate()
+                    ->value('quantity');
+                if ($qty > $available) {
+                    throw ValidationException::withMessages(['quantity' => "Solo hay {$available} en el origen elegido y se piden {$qty}."]);
+                }
+            }
+
+            if ($type === 'transfer') {
                 // Salida del origen
                 $this->processStockMovement($product, $warehouseId, $locationId, $qty, 'out', $unitCost, $data['reason'], $data['unit_id'] ?? null, $textUnit, $userId, $toWarehouseId, $locationDetails);
                 // Entrada al destino (usa el mismo costo promedio del origen)
@@ -135,6 +158,13 @@ class StockController extends Controller
         return redirect()
             ->route('stock.index')
             ->with('status', 'Ajuste de inventario registrado correctamente.');
+    }
+
+    private function assertLocationInWarehouse(?int $locationId, ?int $warehouseId, string $field): void
+    {
+        if ($locationId && (int) Location::whereKey($locationId)->value('warehouse_id') !== (int) $warehouseId) {
+            throw ValidationException::withMessages([$field => 'La ubicación no pertenece al depósito elegido.']);
+        }
     }
 
     private function processStockMovement(Product $product, ?int $warehouseId, ?int $locationId, float $qty, string $type, ?float $unitCost, string $reason, ?int $unitId, ?string $textUnit, ?int $userId, ?int $toWarehouseId, array $locationDetails): void
