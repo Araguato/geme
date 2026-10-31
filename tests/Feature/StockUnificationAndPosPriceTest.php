@@ -6,6 +6,7 @@ use App\Models\CashShift;
 use App\Models\Category;
 use App\Models\Location;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\SalesLocation;
@@ -113,6 +114,35 @@ class StockUnificationAndPosPriceTest extends TestCase
         $this->openShift($supervisor);
         $this->sell($supervisor, $fixed, 1, 8)->assertSessionHasNoErrors();
         $this->assertEquals(8, (float) OrderItem::where('product_id', $fixed->id)->value('unit_price'));
+    }
+
+    public function test_cashea_percentage_is_only_required_for_cashea_payments(): void
+    {
+        $cashier = $this->userWithRoles(['cajero']);
+        $product = $this->product(['price' => 10]);
+        $this->openShift($cashier);
+        $items = [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 10]];
+
+        // El formulario siempre manda el campo, vacío si no se paga con Cashea
+        $this->actingAs($cashier)->post('/pos', [
+            'items' => $items,
+            'payment' => ['method' => 'cash', 'amount' => 10, 'cashea_initial_percentage' => ''],
+        ])->assertSessionHasNoErrors();
+        $this->assertEquals(1, Payment::where('method', 'cash')->count());
+
+        $this->actingAs($cashier)->post('/pos', [
+            'items' => $items,
+            'payment' => ['method' => 'cashea', 'amount' => 0, 'cashea_initial_percentage' => ''],
+        ])->assertSessionHasErrors('payment.cashea_initial_percentage');
+
+        $this->actingAs($cashier)->post('/pos', [
+            'items' => $items,
+            'payment' => ['method' => 'cashea', 'amount' => 2.5, 'cashea_initial_percentage' => '25'],
+        ])->assertSessionHasNoErrors();
+
+        $payment = Payment::where('method', 'cashea')->firstOrFail();
+        $this->assertEquals(2.5, (float) $payment->amount);
+        $this->assertEquals(7.5, (float) $payment->cashea_financed_amount);
     }
 
     public function test_pos_only_discounts_stock_of_the_shop_warehouse(): void

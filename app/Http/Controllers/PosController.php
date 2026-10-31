@@ -81,7 +81,7 @@ class PosController extends Controller
             'payment.method' => 'required|in:cash,card,transfer,pagomovil,punto,cashea,other',
             'payment.amount' => 'required|numeric|min:0',
             'payment.reference' => 'nullable|string|max:255',
-            'payment.cashea_initial_percentage' => 'required_if:payment.method,cashea|numeric|min:0|max:100',
+            'payment.cashea_initial_percentage' => 'nullable|required_if:payment.method,cashea|numeric|min:0|max:100',
         ]);
 
         $isCashea = $data['payment']['method'] === 'cashea';
