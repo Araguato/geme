@@ -145,6 +145,42 @@ class StockUnificationAndPosPriceTest extends TestCase
         $this->assertEquals(7.5, (float) $payment->cashea_financed_amount);
     }
 
+    public function test_payment_amount_is_the_order_total_whatever_the_form_sends(): void
+    {
+        $cashier = $this->userWithRoles(['cajero']);
+        $product = $this->product(['price' => 1.5]);
+        $this->openShift($cashier);
+
+        foreach ([3, 0.5] as $sentAmount) {
+            $this->actingAs($cashier)->post('/pos', [
+                'items' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 1.5]],
+                'payment' => ['method' => 'cash', 'amount' => $sentAmount],
+            ])->assertSessionHasNoErrors();
+        }
+
+        $this->assertEquals([1.5, 1.5], Payment::pluck('amount')->map(fn ($amount) => (float) $amount)->all());
+    }
+
+    public function test_rejected_sale_keeps_the_cart_to_correct_the_quantity(): void
+    {
+        $cashier = $this->userWithRoles(['cajero']);
+        $warehouse = Warehouse::create(['code' => 'MAIN', 'name' => 'Principal', 'is_active' => true]);
+        $location = Location::create(['warehouse_id' => $warehouse->id, 'code' => 'GEN', 'name' => 'General', 'is_active' => true]);
+        $product = $this->product(['name' => 'Dedal']);
+        StockItem::create(['product_id' => $product->id, 'warehouse_id' => $warehouse->id, 'location_id' => $location->id, 'quantity' => 242]);
+        $this->openShift($cashier);
+
+        $this->actingAs($cashier)->from('/pos')->followingRedirects()->post('/pos', [
+            'items' => [['product_id' => $product->id, 'quantity' => '400', 'unit_price' => 10, 'warehouse_id' => $warehouse->id, 'location_id' => $location->id]],
+            'payment' => ['method' => 'cash', 'amount' => 4000],
+        ])->assertOk()
+            ->assertSee('hay 242 disponibles')
+            ->assertSee('"quantity":"400"', false);
+
+        $this->assertEquals(0, Payment::count());
+        $this->assertEquals(242, (float) StockItem::where('product_id', $product->id)->sum('quantity'));
+    }
+
     public function test_pos_only_discounts_stock_of_the_shop_warehouse(): void
     {
         $cashier = $this->userWithRoles(['cajero']);

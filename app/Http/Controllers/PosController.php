@@ -162,11 +162,12 @@ class PosController extends Controller
                 'total' => $total,
             ]);
 
+            // Lo cobrado es el total calculado aquí: solo Cashea cobra una parte
             $paymentData = [
                 'order_id' => $order->id,
                 'cash_shift_id' => $activeShift->id,
                 'method' => $data['payment']['method'],
-                'amount' => $data['payment']['amount'],
+                'amount' => $total,
                 'reference' => $data['payment']['reference'] ?? null,
             ];
 

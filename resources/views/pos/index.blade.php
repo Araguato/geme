@@ -197,6 +197,7 @@
                                         data-name="{{ $displayName }}"
                                         data-price="{{ $product->price }}"
                                         data-price-editable="{{ ($canChangePrice || $product->is_price_change_allowed) ? '1' : '0' }}"
+                                        data-tax-rate="{{ (float) ($product->tax_rate ?? 0) }}"
                                         data-stock-locations='{{ $stockData }}'>
                                     <div class="d-flex justify-content-between">
                                         <span class="fw-medium">{{ $displayName }}</span>
@@ -233,7 +234,7 @@
                             <select name="customer_party_id" class="form-select" id="customer-select">
                                 <option value="">-- Cliente contado --</option>
                                 @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}" data-rif="{{ $customer->document_number }}" data-name="{{ $customer->name }}">
+                                    <option value="{{ $customer->id }}" @selected(old('customer_party_id') == $customer->id) data-rif="{{ $customer->document_number }}" data-name="{{ $customer->name }}">
                                         {{ $customer->name }} — {{ $customer->document_number }}
                                     </option>
                                 @endforeach
@@ -278,16 +279,16 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Monto pagado</label>
-                            <input type="number" step="0.01" min="0" name="payment[amount]" id="payment-amount" class="form-control" required>
+                            <label class="form-label">Monto a cobrar</label>
+                            <input type="number" step="0.01" min="0" name="payment[amount]" id="payment-amount" class="form-control" readonly tabindex="-1" required>
                         </div>
                         <div class="col-md-4 d-none" id="cashea-percentage-wrapper">
                             <label class="form-label">Inicial Cashea (%)</label>
-                            <input type="number" step="0.01" min="0" max="100" name="payment[cashea_initial_percentage]" id="cashea-initial-percentage" class="form-control" placeholder="Ej: 25">
+                            <input type="number" step="0.01" min="0" max="100" name="payment[cashea_initial_percentage]" id="cashea-initial-percentage" class="form-control" placeholder="Ej: 25" value="{{ old('payment.cashea_initial_percentage') }}">
                         </div>
                         <div class="col-md-4" id="payment-reference-wrapper">
                             <label class="form-label">Referencia</label>
-                            <input type="text" name="payment[reference]" class="form-control" placeholder="Número de operación">
+                            <input type="text" name="payment[reference]" class="form-control" placeholder="Número de operación" value="{{ old('payment.reference') }}">
                         </div>
                     </div>
                     <button type="submit" class="btn btn-success mt-3 w-100">Finalizar venta</button>
@@ -342,7 +343,7 @@
         { element: '#product-search', intro: 'Escribe aquí para filtrar productos rápidamente.' },
         { element: '#posCustomer', intro: 'Opcionalmente selecciona un cliente registrado con RIF para el libro de ventas SENIAT.' },
         { element: '#posCartCard', intro: 'Revisa el carrito, ajusta cantidades o precios antes de finalizar.' },
-        { element: '#posPayment', intro: 'Elige el método de pago y el monto recibido.' }
+        { element: '#posPayment', intro: 'Elige el método de pago; el monto a cobrar se calcula con el total de la venta.' }
     ];
 
     const cart = [];
@@ -352,24 +353,33 @@
     const emptyRow = document.getElementById('empty-row');
     let pendingAddProduct = null;
 
+    // Igual que en el servidor: el impuesto de cada línea se suma al total
+    function lineTotal(item) {
+        const subtotal = Math.round(item.qty * item.price * 100) / 100;
+        return subtotal + Math.round(subtotal * item.taxRate) / 100;
+    }
+
+    function updateTotals() {
+        const total = cart.reduce((sum, item) => sum + lineTotal(item), 0);
+        totalEl.textContent = '$ ' + total.toFixed(2);
+        syncPaymentAmount(total);
+    }
+
     function render() {
         tbody.innerHTML = '';
-        let total = 0;
         if (cart.length === 0) {
             tbody.appendChild(emptyRow);
         } else {
             cart.forEach((item, idx) => {
-                const lineTotal = item.qty * item.price;
-                total += lineTotal;
                 const locationLabel = item.warehouse_name && item.location_name
                     ? `<div class="small text-muted"><i class="bi bi-geo-alt"></i> ${item.warehouse_name}/${item.location_name}</div>`
                     : '';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${item.name}${locationLabel}</td>
-                    <td><input type="number" step="0.001" min="0.001" name="items[${idx}][quantity]" class="form-control form-control-sm qty-input" value="${item.qty}" data-idx="${idx}"></td>
-                    <td><input type="number" step="0.01" min="0" name="items[${idx}][unit_price]" class="form-control form-control-sm price-input" value="${item.price.toFixed(2)}" data-idx="${idx}" ${item.priceEditable ? '' : 'readonly tabindex="-1" title="Precio fijo"'}></td>
-                    <td class="line-total">${lineTotal.toFixed(2)}</td>
+                    <td><input type="number" step="0.001" min="0.001" name="items[${idx}][quantity]" class="form-control form-control-sm qty-input" value="${item.qty}" data-idx="${idx}" required></td>
+                    <td><input type="number" step="0.01" min="0" name="items[${idx}][unit_price]" class="form-control form-control-sm price-input" value="${item.price.toFixed(2)}" data-idx="${idx}" required ${item.priceEditable ? '' : 'readonly tabindex="-1" title="Precio fijo"'}></td>
+                    <td class="line-total">${lineTotal(item).toFixed(2)}</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-danger remove-item" data-idx="${idx}">X</button>
                     </td>
@@ -380,16 +390,15 @@
                 tbody.appendChild(tr);
             });
         }
-        totalEl.textContent = '$ ' + total.toFixed(2);
-        paymentAmount.value = total.toFixed(2);
+        updateTotals();
     }
 
-    function addProductToCart(id, name, price, warehouseId, warehouseName, locationId, locationName, priceEditable) {
+    function addProductToCart(id, name, price, warehouseId, warehouseName, locationId, locationName, priceEditable, taxRate) {
         const existing = cart.find(i => i.id === id && i.warehouse_id == warehouseId && i.location_id == locationId);
         if (existing) {
             existing.qty += 1;
         } else {
-            cart.push({ id, name, price, qty: 1, warehouse_id: warehouseId, warehouse_name: warehouseName, location_id: locationId, location_name: locationName, priceEditable });
+            cart.push({ id, name, price, qty: 1, warehouse_id: warehouseId, warehouse_name: warehouseName, location_id: locationId, location_name: locationName, priceEditable, taxRate });
         }
         render();
     }
@@ -400,14 +409,15 @@
         const name = btn.dataset.name;
         const price = parseFloat(btn.dataset.price);
         const priceEditable = btn.dataset.priceEditable === '1';
+        const taxRate = parseFloat(btn.dataset.taxRate) || 0;
 
         if (stockLocations.length === 0) {
-            addProductToCart(id, name, price, null, null, null, null, priceEditable);
+            addProductToCart(id, name, price, null, null, null, null, priceEditable, taxRate);
             return;
         }
         if (stockLocations.length === 1) {
             const loc = stockLocations[0];
-            addProductToCart(id, name, price, loc.warehouse_id, loc.warehouse_name, loc.location_id, loc.location_name, priceEditable);
+            addProductToCart(id, name, price, loc.warehouse_id, loc.warehouse_name, loc.location_id, loc.location_name, priceEditable, taxRate);
             return;
         }
 
@@ -420,7 +430,7 @@
             item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
             item.innerHTML = `<span><strong>${loc.warehouse_name}</strong> &mdash; ${loc.location_name}</span><span class="badge bg-primary">Stock: ${loc.quantity}</span>`;
             item.addEventListener('click', function() {
-                addProductToCart(id, name, price, loc.warehouse_id, loc.warehouse_name, loc.location_id, loc.location_name, priceEditable);
+                addProductToCart(id, name, price, loc.warehouse_id, loc.warehouse_name, loc.location_id, loc.location_name, priceEditable, taxRate);
                 const modal = bootstrap.Modal.getInstance(document.getElementById('locationSelectModal'));
                 modal.hide();
             });
@@ -496,10 +506,10 @@
         const idx = parseInt(input.dataset.idx);
         const field = input.classList.contains('qty-input') ? 'qty' : 'price';
         const val = parseFloat(input.value);
-        if (!isNaN(val) && val >= 0) {
-            cart[idx][field] = val;
-            render();
-        }
+        // Sin redibujar la tabla, para no quitarle el foco al campo mientras se escribe
+        cart[idx][field] = !isNaN(val) && val >= 0 ? val : 0;
+        input.closest('tr').querySelector('.line-total').textContent = lineTotal(cart[idx]).toFixed(2);
+        updateTotals();
     });
 
     document.getElementById('product-search').addEventListener('input', function() {
@@ -530,26 +540,39 @@
         casheaWrapper.classList.toggle('d-none', !isCashea);
         casheaPercentage.required = isCashea;
         referenceWrapper.classList.toggle('d-none', isCashea);
-        if (isCashea) {
-            casheaPercentage.value = casheaPercentage.value || '';
-            paymentAmount.readOnly = true;
-            updateCasheaAmount();
-        } else {
-            paymentAmount.readOnly = false;
-            paymentAmount.value = parseFloat(totalEl.textContent.replace('$', '').replace(',', '')).toFixed(2);
-        }
+        updateTotals();
     }
 
-    function updateCasheaAmount() {
-        if (paymentMethod.value !== 'cashea') return;
-        const total = parseFloat(totalEl.textContent.replace('$', '').replace(',', '')) || 0;
-        const percentage = parseFloat(casheaPercentage.value) || 0;
-        const initial = Math.round(total * (percentage / 100) * 100) / 100;
-        paymentAmount.value = initial.toFixed(2);
+    // Se cobra el total de la venta; con Cashea, solo la inicial
+    function syncPaymentAmount(total) {
+        const percentage = paymentMethod.value === 'cashea' ? (parseFloat(casheaPercentage.value) || 0) : 100;
+        paymentAmount.value = (Math.round(total * percentage) / 100).toFixed(2);
     }
 
     paymentMethod.addEventListener('change', updateCasheaFields);
-    casheaPercentage.addEventListener('input', updateCasheaAmount);
+    casheaPercentage.addEventListener('input', updateTotals);
+
+    // Si el servidor rechazó la venta, se recupera el carrito para poder corregirla
+    Object.values(@json(old('items', []))).forEach(oldItem => {
+        const btn = document.querySelector(`.product-add-btn[data-id="${oldItem.product_id}"]`);
+        if (!btn) return;
+        const loc = JSON.parse(btn.dataset.stockLocations || '[]')
+            .find(l => l.warehouse_id == oldItem.warehouse_id && l.location_id == oldItem.location_id);
+        cart.push({
+            id: btn.dataset.id,
+            name: btn.dataset.name,
+            price: parseFloat(oldItem.unit_price) || 0,
+            qty: parseFloat(oldItem.quantity) || 0,
+            warehouse_id: loc?.warehouse_id ?? null,
+            warehouse_name: loc?.warehouse_name ?? null,
+            location_id: loc?.location_id ?? null,
+            location_name: loc?.location_name ?? null,
+            priceEditable: btn.dataset.priceEditable === '1',
+            taxRate: parseFloat(btn.dataset.taxRate) || 0,
+        });
+    });
+    paymentMethod.value = @json(old('payment.method', 'cash'));
+    render();
     updateCasheaFields();
 
     function updateCustomerInfo() {
@@ -575,7 +598,7 @@
                     { element: '#product-search', intro: 'Escribe aquí para filtrar productos rápidamente.' },
                     { element: '#posCustomer', intro: 'Opcionalmente selecciona un cliente registrado con RIF para el libro de ventas SENIAT.' },
                     { element: '#posCartCard', intro: 'Revisa el carrito, ajusta cantidades o precios antes de finalizar.' },
-                    { element: '#posPayment', intro: 'Elige el método de pago y el monto recibido.' },
+                    { element: '#posPayment', intro: 'Elige el método de pago; el monto a cobrar se calcula con el total de la venta.' },
                 ],
                 nextLabel: 'Siguiente',
                 prevLabel: 'Anterior',
