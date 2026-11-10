@@ -83,7 +83,7 @@
                 <select name="type" id="type" class="form-select" required onchange="toggleTransfer()">
                     <option value="in" {{ old('type') === 'in' ? 'selected' : '' }}>Entrada (compra, carga inicial)</option>
                     <option value="out" {{ old('type') === 'out' ? 'selected' : '' }}>Salida (consumo, merma)</option>
-                    <option value="adjustment" {{ old('type') === 'adjustment' ? 'selected' : '' }}>Ajuste manual</option>
+                    <option value="adjustment" {{ old('type') === 'adjustment' ? 'selected' : '' }}>Ajuste por conteo físico</option>
                     <option value="transfer" {{ old('type') === 'transfer' ? 'selected' : '' }}>Transferencia entre depósitos</option>
                 </select>
             </div>
@@ -177,14 +177,16 @@
 
         <div class="row g-3 mb-3" id="adj-qty">
             <div class="col-md-3">
-                <label class="form-label">Cantidad</label>
+                <label class="form-label" id="quantity-label">Cantidad</label>
                 <input type="number"
                        step="any"
                        min="0.0001"
                        name="quantity"
+                       id="quantity"
                        class="form-control"
                        value="{{ old('quantity') }}"
                        required>
+                <div class="form-text" id="quantity-help">Cantidad que entra, sale o se traslada.</div>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Unidad</label>
@@ -224,14 +226,14 @@
         window.GEME_TOUR_STEPS = [
             { element: '#adj-product', intro: 'Selecciona el producto al que le vas a mover el stock. Si eliges uno, la página recarga para mostrar su stock actual.' },
             { element: '#adj-stock-info', intro: 'Aquí ves el stock actual y el costo promedio del producto seleccionado.' },
-            { element: '#adj-type', intro: 'Elige el tipo de movimiento: entrada, salida, ajuste manual o transferencia entre depósitos.' },
+            { element: '#adj-type', intro: 'Elige el tipo de movimiento: entrada, salida, ajuste por conteo físico (escribes lo que hay realmente, aunque sea 0) o transferencia entre depósitos.' },
             { element: '#adj-reason', intro: 'Describe el motivo del movimiento. Ej: Compra, merma, corrección de inventario.' },
             { element: '#adj-warehouse', intro: 'Selecciona el depósito origen del movimiento.' },
             { element: '#adj-location', intro: 'Selecciona la ubicación exacta dentro del depósito. Se filtra automáticamente por depósito y rellena los detalles.' },
             { element: '#to-warehouse-wrapper', intro: 'En transferencias, indica el depósito destino.' },
             { element: '#to-location-wrapper', intro: 'En transferencias, indica la ubicación destino.' },
             { element: '#adj-details', intro: 'Estos campos se rellenan automáticamente al elegir una ubicación. Puedes editarlos manualmente si es necesario.' },
-            { element: '#adj-qty', intro: 'Indica la cantidad y unidad del movimiento. En entradas, también puedes registrar el costo unitario.' }
+            { element: '#adj-qty', intro: 'En entradas, salidas y transferencias indica la cantidad que se mueve. En el conteo físico indica la existencia real. En entradas también puedes registrar el costo unitario.' }
         ];
 
         // Buscador de productos con imágenes
@@ -297,6 +299,14 @@
             const type = document.getElementById('type').value;
             document.getElementById('to-warehouse-wrapper').style.display = type === 'transfer' ? 'block' : 'none';
             document.getElementById('to-location-wrapper').style.display = type === 'transfer' ? 'block' : 'none';
+
+            // En el conteo físico se escribe la existencia real (0 permitido); en el resto, lo que se mueve (> 0)
+            const isCount = type === 'adjustment';
+            document.getElementById('quantity').min = isCount ? '0' : '0.0001';
+            document.getElementById('quantity-label').textContent = isCount ? 'Existencia contada' : 'Cantidad';
+            document.getElementById('quantity-help').textContent = isCount
+                ? 'Lo que hay realmente en esta ubicación (puede ser 0). El sistema registra la diferencia.'
+                : 'Cantidad que entra, sale o se traslada.';
         }
 
         function filterLocations() {
@@ -345,14 +355,14 @@
                     steps: [
                         { element: '#adj-product', intro: 'Selecciona el producto al que le vas a mover el stock. Si eliges uno, la página recarga para mostrar su stock actual.' },
                         { element: '#adj-stock-info', intro: 'Aquí ves el stock actual y el costo promedio del producto seleccionado.' },
-                        { element: '#adj-type', intro: 'Elige el tipo de movimiento: entrada, salida, ajuste manual o transferencia entre depósitos.' },
+                        { element: '#adj-type', intro: 'Elige el tipo de movimiento: entrada, salida, ajuste por conteo físico (escribes lo que hay realmente, aunque sea 0) o transferencia entre depósitos.' },
                         { element: '#adj-reason', intro: 'Describe el motivo del movimiento. Ej: Compra, merma, corrección de inventario.' },
                         { element: '#adj-warehouse', intro: 'Selecciona el depósito origen del movimiento.' },
                         { element: '#adj-location', intro: 'Selecciona la ubicación exacta dentro del depósito. Se filtra automáticamente por depósito y rellena los detalles.' },
                         { element: '#to-warehouse-wrapper', intro: 'En transferencias, indica el depósito destino.' },
                         { element: '#to-location-wrapper', intro: 'En transferencias, indica la ubicación destino.' },
                         { element: '#adj-details', intro: 'Estos campos se rellenan automáticamente al elegir una ubicación. Puedes editarlos manualmente si es necesario.' },
-                        { element: '#adj-qty', intro: 'Indica la cantidad y unidad del movimiento. En entradas, también puedes registrar el costo unitario.' }
+                        { element: '#adj-qty', intro: 'En entradas, salidas y transferencias indica la cantidad que se mueve. En el conteo físico indica la existencia real. En entradas también puedes registrar el costo unitario.' }
                     ],
                     nextLabel: 'Siguiente',
                     prevLabel: 'Anterior',

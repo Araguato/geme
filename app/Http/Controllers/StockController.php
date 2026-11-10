@@ -80,7 +80,7 @@ class StockController extends Controller
             'product_id' => 'required|exists:products,id',
             'type' => 'required|in:in,out,adjustment,transfer',
             'reason' => 'required|string|max:50',
-            'quantity' => 'required|numeric|min:0.0001',
+            'quantity' => 'required|numeric|min:0',
             'warehouse_id' => 'nullable|exists:warehouses,id',
             'to_warehouse_id' => 'nullable|exists:warehouses,id',
             'to_location_id' => 'nullable|exists:locations,id',
@@ -95,10 +95,16 @@ class StockController extends Controller
             'unit_cost' => 'nullable|numeric|min:0',
         ]);
 
+        // En entradas, salidas y transferencias "cantidad" es lo que se mueve: debe ser > 0.
+        // En el ajuste es la existencia contada en el sitio: 0 es válido (se agotó).
+        if ($data['type'] !== 'adjustment' && (float) $data['quantity'] < 0.0001) {
+            throw ValidationException::withMessages(['quantity' => 'La cantidad a mover debe ser mayor que 0.']);
+        }
+
         $product = Product::findOrFail($data['product_id']);
         $userId = $request->user()?->id;
 
-        DB::transaction(function () use ($data, $product, $userId) {
+        $status = DB::transaction(function () use ($data, $product, $userId) {
             $textUnit = $data['unit'] ?? null;
             $qty = (float) $data['quantity'];
             $type = $data['type'];
@@ -140,6 +146,22 @@ class StockController extends Controller
                 }
             }
 
+            if ($type === 'adjustment') {
+                // Conteo físico: se registra solo la diferencia entre lo contado y lo que había
+                $current = (float) StockItem::where('product_id', $product->id)
+                    ->where('warehouse_id', $warehouseId)
+                    ->where('location_id', $locationId)
+                    ->lockForUpdate()
+                    ->value('quantity');
+                $diff = round($qty - $current, 4);
+                if ($diff == 0) {
+                    return "Sin diferencia: la existencia ya era {$current}. No se registró ningún movimiento.";
+                }
+                $this->processStockMovement($product, $warehouseId, $locationId, $diff, 'adjustment', $unitCost, $data['reason'], $data['unit_id'] ?? null, $textUnit, $userId, null, $locationDetails);
+
+                return 'Ajuste registrado: existencia ' . $current . ' → ' . $qty . ' (' . ($diff > 0 ? '+' : '') . $diff . ').';
+            }
+
             if ($type === 'transfer') {
                 // Salida del origen
                 $this->processStockMovement($product, $warehouseId, $locationId, $qty, 'out', $unitCost, $data['reason'], $data['unit_id'] ?? null, $textUnit, $userId, $toWarehouseId, $locationDetails);
@@ -153,11 +175,13 @@ class StockController extends Controller
             } else {
                 $this->processStockMovement($product, $warehouseId, $locationId, $qty, $type, $unitCost, $data['reason'], $data['unit_id'] ?? null, $textUnit, $userId, null, $locationDetails);
             }
+
+            return 'Ajuste de inventario registrado correctamente.';
         });
 
         return redirect()
             ->route('stock.index')
-            ->with('status', 'Ajuste de inventario registrado correctamente.');
+            ->with('status', $status);
     }
 
     private function assertLocationInWarehouse(?int $locationId, ?int $warehouseId, string $field): void
@@ -183,10 +207,12 @@ class StockController extends Controller
         $oldQty = (float) $stockItem->quantity;
         $oldAvg = (float) $stockItem->average_cost;
 
+        // En 'adjustment' $qty llega con signo (diferencia del conteo); en el resto siempre es positivo
         $direction = $type === 'out' ? -1 : 1;
         $effectiveQty = $qty * $direction;
+        $isIncrease = $type === 'in' || ($type === 'adjustment' && $qty > 0);
 
-        if ($type === 'in') {
+        if ($isIncrease) {
             $unitCost = $unitCost ?? $oldAvg;
             $newQty = $oldQty + $qty;
             if ($newQty <= 0) {
@@ -195,8 +221,8 @@ class StockController extends Controller
                 $newAvg = ($oldQty * $oldAvg + $qty * $unitCost) / $newQty;
             }
         } else {
-            // out o adjustment se valora al costo promedio actual
-            $unitCost = $unitCost ?? $oldAvg;
+            // Las salidas (y ajustes a la baja) se valoran siempre al costo promedio actual
+            $unitCost = $oldAvg;
             $newQty = $oldQty + $effectiveQty;
             if ($newQty < 0) {
                 $newQty = 0;

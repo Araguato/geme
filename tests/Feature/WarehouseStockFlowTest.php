@@ -399,6 +399,49 @@ class WarehouseStockFlowTest extends TestCase
         $this->assertEquals(3, (float) $product->fresh()->stock_quantity);
     }
 
+    public function test_physical_count_sets_stock_to_counted_quantity_including_zero(): void
+    {
+        $user = $this->user('almacenista');
+        $product = $this->product();
+        $origin = $this->stock($product, $this->saborShelf1, 5);
+
+        $count = fn ($qty) => $this->actingAs($user)->post('/stock/adjust', [
+            'product_id' => $product->id, 'type' => 'adjustment', 'reason' => 'conteo', 'quantity' => $qty,
+            'warehouse_id' => $this->sabor->id, 'location_id' => $this->saborShelf1->id,
+        ]);
+
+        // A la baja: se contaron 2 donde había 5
+        $count(2)->assertSessionHasNoErrors();
+        $this->assertEquals(2, (float) $origin->fresh()->quantity);
+        $this->assertEquals(-3, (float) StockMovement::where('product_id', $product->id)->latest('id')->value('quantity'));
+
+        // Se agotó: 0 es una existencia válida
+        $count(0)->assertSessionHasNoErrors();
+        $this->assertEquals(0, (float) $origin->fresh()->quantity);
+        $this->assertEquals(0, (float) $product->fresh()->stock_quantity);
+
+        // Sin diferencia: no se crea movimiento
+        $movements = StockMovement::where('product_id', $product->id)->count();
+        $count(0)->assertSessionHasNoErrors();
+        $this->assertEquals($movements, StockMovement::where('product_id', $product->id)->count());
+
+        // Al alza
+        $count(4)->assertSessionHasNoErrors();
+        $this->assertEquals(4, (float) $origin->fresh()->quantity);
+    }
+
+    public function test_zero_quantity_is_rejected_for_movements(): void
+    {
+        $user = $this->user('almacenista');
+        $product = $this->product();
+        $this->stock($product, $this->saborShelf1, 5);
+
+        $this->actingAs($user)->post('/stock/adjust', [
+            'product_id' => $product->id, 'type' => 'out', 'reason' => 'merma', 'quantity' => 0,
+            'warehouse_id' => $this->sabor->id, 'location_id' => $this->saborShelf1->id,
+        ])->assertSessionHasErrors('quantity');
+    }
+
     public function test_transfer_rejects_location_of_another_warehouse(): void
     {
         $user = $this->user('almacenista');
