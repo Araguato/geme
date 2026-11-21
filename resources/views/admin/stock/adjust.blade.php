@@ -205,15 +205,19 @@
                 </select>
             </div>
             <div class="col-md-3">
+                @php
+                    $avgCost = (float) (optional($selectedStockItem)->average_cost ?? 0);
+                    $defaultUnitCost = $avgCost > 0 ? $avgCost : (float) (optional($selectedProduct)->cost ?? 0);
+                @endphp
                 <label class="form-label">Costo unitario ($) <small>(solo entradas)</small></label>
                 <input type="number"
                        step="0.0001"
                        min="0"
                        name="unit_cost"
                        class="form-control"
-                       value="{{ old('unit_cost') }}">
+                       value="{{ old('unit_cost', $defaultUnitCost > 0 ? round($defaultUnitCost, 4) : '') }}">
                 <div class="form-text">
-                    Si se deja vacío en una entrada, se usará el costo promedio actual.
+                    Propuesto: costo promedio actual o, si no hay stock, el costo del producto. Ajústalo si la compra tuvo otro precio.
                 </div>
             </div>
         </div>

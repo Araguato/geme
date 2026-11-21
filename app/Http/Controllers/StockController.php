@@ -213,7 +213,8 @@ class StockController extends Controller
         $isIncrease = $type === 'in' || ($type === 'adjustment' && $qty > 0);
 
         if ($isIncrease) {
-            $unitCost = $unitCost ?? $oldAvg;
+            // Sin costo indicado: costo promedio actual; si aún no hay (producto nuevo), el costo del producto
+            $unitCost = $unitCost ?? ($oldAvg > 0 ? $oldAvg : (float) ($product->cost ?? 0));
             $newQty = $oldQty + $qty;
             if ($newQty <= 0) {
                 $newAvg = 0;
