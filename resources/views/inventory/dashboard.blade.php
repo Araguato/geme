@@ -1,6 +1,7 @@
 @extends('layout')
 
 @section('content')
+<div class="geme-panel">
 @php
     $qty = fn ($v) => rtrim(rtrim(number_format((float) $v, 3, ',', '.'), '0'), ',');
     $reasons = ['sale' => 'Venta', 'purchase' => 'Compra', 'purchase_edit' => 'Corrección de compra', 'initial_stock' => 'Stock inicial', 'recipe' => 'Consumo receta'];
@@ -106,5 +107,6 @@
             </ul>
         </div>
     </div>
+</div>
 </div>
 @endsection

@@ -228,7 +228,7 @@ class RoleHomeAndSalesReportTest extends TestCase
             ->assertOk()
             ->assertSee('Por vendedor')
             ->assertSee('Ana')
-            ->assertSee('Informe de ventas completo');
+            ->assertSee('Informe de ventas');
 
         $this->actingAs($this->userWithRoles(['contable']))->get('/contabilidad')
             ->assertOk()
@@ -238,6 +238,33 @@ class RoleHomeAndSalesReportTest extends TestCase
         // El vendedor no ve las estadísticas
         $this->actingAs($this->userWithRoles(['vendedor']))->get('/dashboard')
             ->assertOk()
-            ->assertDontSee('Informe de ventas completo');
+            ->assertDontSee('Informe de ventas');
+    }
+
+    public function test_sales_without_cost_are_not_counted_as_full_margin(): void
+    {
+        $seller = $this->userWithRoles(['vendedor'], ['name' => 'Ian']);
+        $category = Category::create(['name' => 'Varios', 'is_active' => true]);
+        $noCost = Product::create(['category_id' => $category->id, 'name' => 'Sin costo', 'price' => 10, 'is_active' => true]);
+        $withCost = Product::create(['category_id' => $category->id, 'name' => 'Con costo', 'price' => 10, 'cost' => 6, 'is_active' => true]);
+
+        $order = Order::create(['order_number' => 'T1', 'user_id' => $seller->id, 'type' => 'pos', 'status' => 'completed',
+            'payment_status' => 'paid', 'subtotal' => 30, 'tax' => 0, 'total' => 30]);
+        OrderItem::create(['order_id' => $order->id, 'product_id' => $noCost->id, 'name' => 'Sin costo', 'quantity' => 2, 'unit_price' => 10, 'tax_amount' => 0, 'total' => 20]);
+        OrderItem::create(['order_id' => $order->id, 'product_id' => $withCost->id, 'name' => 'Con costo', 'quantity' => 1, 'unit_price' => 10, 'tax_amount' => 0, 'total' => 10]);
+
+        $admin = $this->userWithRoles(['admin']);
+        $totals = $this->actingAs($admin)->get('/reports/sales')->assertOk()->assertSee('sin costo registrado')->viewData('totals');
+
+        // Solo la línea con costo entra en el margen: 10 - 6 = 4 → 40 %
+        $this->assertEqualsWithDelta(20, $totals['uncosted'], 0.001);
+        $this->assertEqualsWithDelta(33.3, $totals['cost_coverage'], 0.1);
+        $this->assertEqualsWithDelta(4, $totals['margin'], 0.001);
+        $this->assertEqualsWithDelta(40, $totals['margin_pct'], 0.001);
+
+        $products = $this->actingAs($admin)->get('/reports/sales?group=product')->viewData('rows')->keyBy('label');
+        $this->assertNull($products['Sin costo']['margin_pct']);
+
+        $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('Ian')->assertSee('sin costo');
     }
 }

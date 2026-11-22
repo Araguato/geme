@@ -94,13 +94,16 @@ class SalesReportService
         if (!empty($this->filters['category_id'])) {
             // Con filtro de categoría solo valen las líneas de esa categoría
             $row = $this->itemsQuery()->selectRaw(
-                'COUNT(DISTINCT o.id) as tickets, SUM(oi.total - oi.tax_amount) as net, SUM(oi.tax_amount) as tax, SUM(oi.total) as total, SUM(' . $this->itemCostSql() . ') as cost'
+                'COUNT(DISTINCT o.id) as tickets, SUM(oi.total - oi.tax_amount) as net, SUM(oi.tax_amount) as tax, SUM(oi.total) as total, '
+                . 'SUM(' . $this->itemCostSql() . ') as cost, ' . $this->uncostedSql() . ' as uncosted'
             )->first();
         } else {
             $row = $this->ordersQuery()->selectRaw(
                 'COUNT(*) as tickets, SUM(o.subtotal) as net, SUM(o.tax) as tax, SUM(o.total) as total'
             )->first();
-            $row->cost = (float) $this->itemsQuery()->selectRaw('SUM(' . $this->itemCostSql() . ') as cost')->value('cost');
+            $items = $this->itemsQuery()->selectRaw('SUM(' . $this->itemCostSql() . ') as cost, ' . $this->uncostedSql() . ' as uncosted')->first();
+            $row->cost = $items->cost ?? 0;
+            $row->uncosted = $items->uncosted ?? 0;
         }
 
         return $this->withMargin([
@@ -109,6 +112,7 @@ class SalesReportService
             'tax' => (float) ($row->tax ?? 0),
             'total' => (float) ($row->total ?? 0),
             'cost' => (float) ($row->cost ?? 0),
+            'uncosted' => (float) ($row->uncosted ?? 0),
         ]);
     }
 
@@ -138,7 +142,7 @@ class SalesReportService
 
         $q->selectRaw("COUNT(DISTINCT o.id) as tickets, SUM(oi.quantity) as quantity,
                 SUM(oi.total - oi.tax_amount) as net, SUM(oi.tax_amount) as tax, SUM(oi.total) as total,
-                SUM($cost) as cost")
+                SUM($cost) as cost, {$this->uncostedSql()} as uncosted")
             ->orderByDesc('net');
 
         if ($limit) {
@@ -154,6 +158,7 @@ class SalesReportService
             'tax' => (float) $r->tax,
             'total' => (float) $r->total,
             'cost' => (float) $r->cost,
+            'uncosted' => (float) $r->uncosted,
         ]));
 
         $netTotal = $rows->sum('net');
@@ -178,10 +183,25 @@ class SalesReportService
             ->toArray();
     }
 
+    /** Venta neta de líneas sin costo conocido (ni en kardex ni en la ficha del producto). */
+    protected function uncostedSql(): string
+    {
+        return 'SUM(CASE WHEN (' . $this->itemCostSql() . ') <= 0 THEN oi.total - oi.tax_amount ELSE 0 END)';
+    }
+
+    /**
+     * Margen calculado solo sobre la venta que tiene costo: una línea sin costo no es
+     * "100 % de ganancia", es un dato que falta. cost_coverage indica qué parte de la
+     * venta tiene costo (100 = completo); margin_pct es null si ninguna lo tiene.
+     */
     protected function withMargin(array $r): array
     {
-        $r['margin'] = round($r['net'] - $r['cost'], 2);
-        $r['margin_pct'] = $r['net'] > 0 ? round($r['margin'] / $r['net'] * 100, 1) : 0.0;
+        $uncosted = min($r['uncosted'] ?? 0, $r['net']);
+        $costedNet = $r['net'] - $uncosted;
+        $r['uncosted'] = round($uncosted, 2);
+        $r['cost_coverage'] = $r['net'] > 0 ? round($costedNet / $r['net'] * 100, 1) : 100.0;
+        $r['margin'] = round($costedNet - $r['cost'], 2);
+        $r['margin_pct'] = $costedNet > 0 ? round($r['margin'] / $costedNet * 100, 1) : null;
 
         return $r;
     }

@@ -230,6 +230,35 @@
             opacity: 0.75;
         }
 
+        /* Paneles e informes: listas y tablas que siguen el tema (claro / oscuro) */
+        .geme-panel .list-group-item {
+            background-color: transparent;
+            color: inherit;
+            border-color: {{ $isLight ? '#e5e7eb' : 'rgba(148, 163, 184, 0.18)' }};
+        }
+        .geme-panel .table {
+            --bs-table-bg: transparent;
+            --bs-table-color: inherit;
+            --bs-table-hover-bg: rgba(148, 163, 184, 0.10);
+            --bs-table-hover-color: inherit;
+            --bs-table-border-color: {{ $isLight ? '#e5e7eb' : 'rgba(148, 163, 184, 0.18)' }};
+        }
+        .geme-panel .table-light {
+            --bs-table-bg: {{ $isLight ? '#f1f5f9' : 'rgba(0, 0, 0, 0.35)' }};
+            --bs-table-color: inherit;
+        }
+        .geme-panel .nav-tabs { border-bottom-color: {{ $isLight ? '#e5e7eb' : '#1e293b' }}; }
+        .geme-panel .nav-tabs .nav-link { color: inherit; opacity: 0.75; }
+        .geme-panel .nav-tabs .nav-link.active {
+            opacity: 1;
+            background-color: {{ $isLight ? '#ffffff' : '#0b1220' }};
+            color: inherit;
+            border-color: {{ $isLight ? '#e5e7eb #e5e7eb #ffffff' : '#1e293b #1e293b #0b1220' }};
+        }
+        .geme-panel .progress { background-color: rgba(148, 163, 184, 0.2); }
+        .geme-panel .card > .table-responsive > .table > :not(caption) > * > *:first-child { padding-left: 1rem; }
+        .geme-panel .card > .table-responsive > .table > :not(caption) > * > *:last-child { padding-right: 1rem; }
+
         .form-control::placeholder,
         .form-select::placeholder {
             color: {{ $isLight ? '#9ca3af' : '#f0dfc4' }};

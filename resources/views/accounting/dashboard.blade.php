@@ -1,8 +1,10 @@
 @extends('layout')
 
 @section('content')
+<div class="geme-panel">
 @php
     $money = fn ($v) => number_format((float) $v, 2, ',', '.');
+    $pct = fn ($v) => $v === null ? '—' : number_format($v, 1, ',', '.') . ' %';
     $methodLabels = ['cash' => 'Efectivo', 'card' => 'Tarjeta', 'transfer' => 'Transferencia', 'pagomovil' => 'Pago Móvil', 'punto' => 'Punto de venta', 'cashea' => 'Cashea (inicial)', 'other' => 'Otro'];
     $monthStr = $month->format('Y-m');
     $range = ['from' => $month->copy()->startOfMonth()->toDateString(), 'to' => $month->copy()->endOfMonth()->toDateString()];
@@ -58,7 +60,10 @@
     <div class="col-6 col-lg-3"><div class="card card-body py-2 h-100">
         <div class="text-muted small">Margen bruto</div>
         <div class="fs-4 fw-bold {{ $sales['margin'] < 0 ? 'text-danger' : 'text-success' }}">{{ $money($sales['margin']) }}</div>
-        <div class="text-muted small">{{ number_format($sales['margin_pct'], 1, ',', '.') }} % · costo {{ $money($sales['cost']) }}</div>
+        <div class="text-muted small">{{ $pct($sales['margin_pct']) }} · costo {{ $money($sales['cost']) }}</div>
+        @if($sales['net'] > 0 && $sales['cost_coverage'] < 100)
+            <div class="small text-warning"><i class="bi bi-exclamation-triangle"></i> {{ number_format(100 - $sales['cost_coverage'], 0) }} % de la venta sin costo</div>
+        @endif
     </div></div>
     <div class="col-6 col-lg-3"><div class="card card-body py-2 h-100">
         <div class="text-muted small">Cuentas por pagar abiertas</div>
@@ -141,7 +146,7 @@
             </div>
             <ul class="list-group list-group-flush">
                 @forelse($topCategories as $r)
-                    <li class="list-group-item d-flex justify-content-between"><span>{{ $r['label'] }}</span><span>{{ $money($r['net']) }} <span class="text-muted small">({{ number_format($r['margin_pct'], 0) }} % mg.)</span></span></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>{{ $r['label'] }}</span><span>{{ $money($r['net']) }} <span class="text-muted small">({{ $r['margin_pct'] === null ? 'sin costo' : number_format($r['margin_pct'], 0) . ' % mg.' }})</span></span></li>
                 @empty
                     <li class="list-group-item text-muted">Sin ventas.</li>
                 @endforelse
@@ -197,6 +202,7 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 @endsection
 

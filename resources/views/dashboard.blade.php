@@ -1,318 +1,372 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl leading-tight">
-            {{ __('Panel principal') }}
-        </h2>
-    </x-slot>
+@extends('layout')
 
-    @php
-        $user = auth()->user();
-        $isAdmin = $user && $user->hasRole('admin');
-        $isSupervisor = $user && $user->hasRole('supervisor');
-        $canSeeSummary = $isAdmin || $isSupervisor;
-        // Misma matriz de roles que routes/web.php
-        $canSell = $user && $user->hasAnyRole(['admin', 'supervisor', 'cajero', 'vendedor']);
-        $canManageInventory = $user && $user->hasAnyRole(['admin', 'supervisor', 'almacenista']);
-        $canSeeFinance = $user && $user->hasAnyRole(['admin', 'supervisor', 'contable']);
-        $storedPrimary = \App\Models\Setting::get('theme_primary_color', '#0f172a');
-        $storedAccent = \App\Models\Setting::get('theme_accent_color', '#22c55e');
-        $themeVariant = \App\Models\Setting::get('theme_variant', 'classic');
-        $isLight = ($themeVariant === 'light');
-        $themePrimary = $isLight ? '#1f2937' : ($storedPrimary ?: '#0f172a');
-        $themeAccent = $isLight ? '#38bdf8' : ($storedAccent ?: '#22c55e');
-        $cardBg = $isLight ? '#ffffff' : '#0b1220';
-        $cardText = $isLight ? '#111827' : '#f3f4f6';
-        $mutedText = $isLight ? '#4b5563' : '#9ca3af';
-        $borderColor = $isLight ? '#e5e7eb' : '#1e293b';
-        $pageBg = $isLight ? '#f3f4f6' : '#020617';
+@section('content')
+@php
+    $user = auth()->user();
+    $isAdmin = $user->hasRole('admin');
+    $canSell = $user->hasAnyRole(['admin', 'supervisor', 'cajero', 'vendedor']);
+    $canManageInventory = $user->hasAnyRole(['admin', 'supervisor', 'almacenista']);
+    $canSeeFinance = $user->hasAnyRole(['admin', 'supervisor', 'contable']);
 
-        $accentHex = ltrim($themeAccent, '#');
-        $accentR = hexdec(substr($accentHex, 0, 2));
-        $accentG = hexdec(substr($accentHex, 2, 2));
-        $accentB = hexdec(substr($accentHex, 4, 2));
-        $accentLuma = (0.299 * $accentR + 0.587 * $accentG + 0.114 * $accentB) / 255;
-        $accentTextColor = $accentLuma > 0.5 ? '#0f172a' : '#ffffff';
+    $themeVariant = \App\Models\Setting::get('theme_variant', 'classic');
+    $isLight = $themeVariant === 'light';
+    $accent = $isLight ? '#38bdf8' : (\App\Models\Setting::get('theme_accent_color', '#22c55e') ?: '#22c55e');
 
-        $salesModules = [];
-        if ($canSell) {
-            $salesModules[] = ['id' => 'dashboardPos', 'route' => route('pos.index'), 'label' => 'TPV', 'icon' => 'bi-cart-check'];
-        }
-        $salesModules[] = ['id' => 'dashboardSearch', 'route' => route('products.search'), 'label' => 'Buscar productos', 'icon' => 'bi-upc-scan'];
-        $salesModules[] = ['id' => 'dashboardCatalog', 'route' => route('catalog.index'), 'label' => 'Catálogo público', 'icon' => 'bi-shop', 'target' => '_blank'];
-        $salesModules[] = ['id' => 'dashboardHelp', 'route' => route('help.index'), 'label' => 'Centro de ayuda', 'icon' => 'bi-question-circle'];
+    $money = fn ($v) => '$ ' . number_format((float) $v, 2, ',', '.');
+    $pct = fn ($v) => $v === null ? '—' : number_format($v, 1, ',', '.') . ' %';
+    $methodLabels = ['cash' => 'Efectivo', 'card' => 'Tarjeta', 'transfer' => 'Transferencia', 'pagomovil' => 'Pago Móvil', 'punto' => 'Punto de venta', 'cashea' => 'Cashea', 'other' => 'Otro'];
 
-        $moduleGroups = [
-            'Ventas y operaciones' => $salesModules,
+    // Accesos según el rol (misma matriz que routes/web.php)
+    $moduleGroups = [];
+    $sales = [];
+    if ($canSell) {
+        $sales[] = ['route' => route('pos.index'), 'label' => 'TPV', 'icon' => 'bi-cart-check'];
+    }
+    $sales[] = ['route' => route('products.search'), 'label' => 'Buscar productos', 'icon' => 'bi-upc-scan'];
+    $sales[] = ['route' => route('catalog.index'), 'label' => 'Catálogo público', 'icon' => 'bi-shop', 'target' => '_blank'];
+    $sales[] = ['route' => route('help.index'), 'label' => 'Centro de ayuda', 'icon' => 'bi-question-circle'];
+    $moduleGroups['Ventas y operaciones'] = $sales;
+    if ($canManageInventory) {
+        $moduleGroups['Inventario'] = [
+            ['route' => route('inventory.dashboard'), 'label' => 'Panel de almacén', 'icon' => 'bi-speedometer2'],
+            ['route' => route('products.index'), 'label' => 'Productos', 'icon' => 'bi-box-seam'],
+            ['route' => route('stock.index'), 'label' => 'Inventario / stock', 'icon' => 'bi-clipboard-data'],
+            ['route' => route('warehouses.index'), 'label' => 'Depósitos', 'icon' => 'bi-building'],
         ];
-        if ($canManageInventory) {
-            $moduleGroups['Inventario'] = [
-                ['id' => 'dashboardProducts', 'route' => route('products.index'), 'label' => 'Productos', 'icon' => 'bi-box-seam'],
-                ['id' => 'dashboardStock', 'route' => route('stock.index'), 'label' => 'Inventario / stock', 'icon' => 'bi-clipboard-data'],
-                ['id' => 'dashboardWarehouses', 'route' => route('warehouses.index'), 'label' => 'Depósitos', 'icon' => 'bi-building'],
-                ['id' => 'dashboardLocations', 'route' => route('locations.index'), 'label' => 'Ubicaciones', 'icon' => 'bi-geo-alt'],
-            ];
-        }
-        if ($canSeeFinance) {
-            $moduleGroups['Finanzas e informes'] = [
-                ['id' => 'dashboardSalesReport', 'route' => route('reports.sales'), 'label' => 'Ventas por vendedor / categoría', 'icon' => 'bi-bar-chart'],
-                ['id' => 'dashboardAccounting', 'route' => route('accounting.dashboard'), 'label' => 'Panel financiero', 'icon' => 'bi-calculator'],
-                ['id' => 'dashboardFiscal', 'route' => route('fiscal-ledger.index'), 'label' => 'Libro SENIAT', 'icon' => 'bi-journal-text'],
-                ['id' => 'dashboardPayables', 'route' => route('supplier-ap.dashboard'), 'label' => 'Cuentas por pagar', 'icon' => 'bi-cash-coin'],
-            ];
-        }
-        if ($canManageInventory) {
-            $moduleGroups['Inventario'][] = ['id' => 'dashboardWarehousePanel', 'route' => route('inventory.dashboard'), 'label' => 'Panel de almacén', 'icon' => 'bi-speedometer2'];
-        }
-        if ($isAdmin) {
-            $moduleGroups['Administración'] = [
-                ['id' => 'dashboardFinances', 'route' => route('finances.index'), 'label' => 'Finanzas', 'icon' => 'bi-graph-up'],
-                ['id' => 'dashboardPayroll', 'route' => route('payroll-periods.index'), 'label' => 'Nómina', 'icon' => 'bi-wallet2'],
-                ['id' => 'dashboardEmployees', 'route' => route('employees.index'), 'label' => 'Empleados', 'icon' => 'bi-people'],
-                ['id' => 'dashboardSuppliers', 'route' => route('suppliers.index'), 'label' => 'Proveedores', 'icon' => 'bi-truck'],
-                ['id' => 'dashboardSettings', 'route' => route('settings.appearance.edit'), 'label' => 'Apariencia', 'icon' => 'bi-palette'],
-            ];
-        }
-    @endphp
+    }
+    if ($canSeeFinance) {
+        $moduleGroups['Finanzas e informes'] = [
+            ['route' => route('reports.sales'), 'label' => 'Ventas por vendedor / categoría', 'icon' => 'bi-bar-chart'],
+            ['route' => route('accounting.dashboard'), 'label' => 'Panel financiero', 'icon' => 'bi-calculator'],
+            ['route' => route('fiscal-ledger.index'), 'label' => 'Libro SENIAT', 'icon' => 'bi-journal-text'],
+            ['route' => route('supplier-ap.dashboard'), 'label' => 'Cuentas por pagar', 'icon' => 'bi-cash-coin'],
+        ];
+    }
+    if ($isAdmin) {
+        $moduleGroups['Administración'] = [
+            ['route' => route('users.index'), 'label' => 'Usuarios', 'icon' => 'bi-person-gear'],
+            ['route' => route('payroll-periods.index'), 'label' => 'Nómina', 'icon' => 'bi-wallet2'],
+            ['route' => route('employees.index'), 'label' => 'Empleados', 'icon' => 'bi-people'],
+            ['route' => route('suppliers.index'), 'label' => 'Proveedores', 'icon' => 'bi-truck'],
+            ['route' => route('settings.appearance.edit'), 'label' => 'Apariencia', 'icon' => 'bi-palette'],
+        ];
+    }
+@endphp
 
-    @push('styles')
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    @endpush
+<style>
+    .dash { --dash-accent: {{ $accent }}; }
+    .dash .kpi { position: relative; overflow: hidden; border-radius: 1rem; }
+    .dash .kpi .kpi-icon {
+        width: 2.6rem; height: 2.6rem; border-radius: .8rem; display: flex; align-items: center; justify-content: center;
+        font-size: 1.25rem; background: color-mix(in srgb, var(--dash-accent) 18%, transparent); color: var(--dash-accent);
+    }
+    .dash .kpi .kpi-value { font-size: 1.65rem; font-weight: 700; line-height: 1.1; letter-spacing: -.01em; }
+    .dash .kpi .kpi-label { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; opacity: .7; }
+    .dash .delta { display: inline-flex; align-items: center; gap: .2rem; font-size: .78rem; font-weight: 600; padding: .1rem .5rem; border-radius: 999px; }
+    .dash .delta.up { background: rgba(34,197,94,.15); color: {{ $isLight ? '#15803d' : '#4ade80' }}; }
+    .dash .delta.down { background: rgba(239,68,68,.15); color: {{ $isLight ? '#b91c1c' : '#f87171' }}; }
+    .dash .delta.flat { background: rgba(148,163,184,.18); }
+    .dash .card { border-radius: 1rem; box-shadow: 0 .25rem 1rem rgba(0,0,0,.08); }
+    .dash .card-header { border-top-left-radius: 1rem !important; border-top-right-radius: 1rem !important; font-weight: 600; }
+    .dash .rank-row + .rank-row { border-top: 1px solid rgba(148,163,184,.18); }
+    .dash .rank-bar { height: 5px; border-radius: 3px; background: rgba(148,163,184,.2); overflow: hidden; }
+    .dash .rank-bar > span { display: block; height: 100%; background: var(--dash-accent); border-radius: 3px; }
+    .dash .module-link {
+        display: flex; align-items: center; gap: .6rem; padding: .7rem .9rem; border-radius: .75rem; text-decoration: none;
+        border: 1px solid rgba(148,163,184,.25); color: inherit; transition: background-color .12s, border-color .12s, transform .12s;
+    }
+    .dash .module-link:hover { border-color: var(--dash-accent); background: color-mix(in srgb, var(--dash-accent) 10%, transparent); color: inherit; transform: translateY(-1px); }
+    .dash .module-link i { color: var(--dash-accent); font-size: 1.15rem; }
+    .dash .section-title { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; opacity: .7; font-weight: 600; }
+    .dash .list-clean { list-style: none; margin: 0; padding: 0; }
+</style>
 
-    <div class="py-3 py-sm-4" style="background-color: {{ $pageBg }}; color: {{ $cardText }};">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center mb-3">
-                <div>
-                    <h1 class="text-2xl font-bold" style="color: {{ $cardText }};">Hola, {{ $user->name }}</h1>
-                    <p class="text-sm mt-1" style="color: {{ $mutedText }};">Selecciona una acción para empezar.</p>
-                </div>
-                <button class="btn btn-sm btn-outline-accent hidden sm:inline-block" onclick="startDashboardTour()" style="border-color: {{ $themeAccent }}; color: {{ $themeAccent }};">
-                    <i class="bi bi-question-circle"></i> Tour
-                </button>
-            </div>
-
-            {{-- Estado de caja --}}
-            <div class="card mb-2 shadow-sm border-0" style="background-color: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                <div class="card-body py-2 px-3 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        @if($activeShift)
-                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Caja abierta</span>
-                            <span class="fw-semibold small" style="color: {{ $cardText }};">{{ $activeShift->name }}</span>
-                        @else
-                            <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Caja cerrada</span>
-                            <span class="small" style="color: {{ $cardText }};">Abre un turno antes de vender.</span>
-                        @endif
-                    </div>
-                    @if($canSell)
-                    <a href="{{ route('pos.index') }}" class="btn btn-accent w-100 w-sm-auto" style="background: {{ $themeAccent }}; border-color: {{ $themeAccent }}; color: {{ $accentTextColor }};">
-                        <i class="bi bi-cart-check"></i> {{ $activeShift ? 'Ir al TPV' : 'Abrir caja' }}
-                    </a>
-                    @endif
-                </div>
-            </div>
-
-            {{-- Módulos principales --}}
-            <div class="mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h3 class="h6 mb-0 fw-semibold" style="color: {{ $cardText }};">Módulos</h3>
-                    <button class="btn btn-sm btn-outline-accent d-sm-none" onclick="startDashboardTour()" style="border-color: {{ $themeAccent }}; color: {{ $themeAccent }};">
-                        <i class="bi bi-question-circle"></i>
-                    </button>
-                </div>
-                <div class="row g-3">
-                    @foreach($moduleGroups as $groupName => $groupModules)
-                        <div class="col-12 col-md-6 col-lg-4">
-                            <div class="card border-0 shadow-sm" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }} !important;">
-                                <div class="card-header py-2 px-3 border-bottom" style="background: transparent; border-color: {{ $borderColor }};">
-                                    <small class="text-uppercase fw-bold" style="color: {{ $mutedText }}; font-size: 0.7rem; letter-spacing: 0.05em;">{{ $groupName }}</small>
-                                </div>
-                                <div class="list-group list-group-flush">
-                                    @foreach($groupModules as $mod)
-                                        <a href="{{ $mod['route'] }}" @if(!empty($mod['target'])) target="{{ $mod['target'] }}" @endif class="list-group-item list-group-item-action d-flex align-items-center gap-2 py-2 px-3 dashboard-list-item" id="{{ $mod['id'] }}" style="background: transparent; color: {{ $cardText }}; border-color: {{ $borderColor }};">
-                                            <i class="bi {{ $mod['icon'] }} fs-5" style="color: {{ $themeAccent }};"></i>
-                                            <span class="fw-medium small">{{ $mod['label'] }}</span>
-                                            <i class="bi bi-chevron-right ms-auto small" style="color: {{ $mutedText }};"></i>
-                                        </a>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-
-            {{-- Resumen del negocio / Ventas del mes: solo admin y supervisor --}}
-            @if($canSeeSummary)
-                <div class="mb-4">
-                    <h3 class="text-lg font-semibold mb-3" style="color: {{ $cardText }};">Resumen del negocio</h3>
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4" id="dashboardKpis">
-                        <div class="rounded shadow-sm p-4" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                            <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Ventas hoy</h6>
-                            <p class="text-2xl font-bold" style="color: {{ $cardText }};">$ {{ number_format($salesToday, 2) }}</p>
-                            <small style="color: {{ $mutedText }};">{{ $ordersToday }} órdenes</small>
-                        </div>
-                        <div class="rounded shadow-sm p-4" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                            <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Ventas del mes</h6>
-                            <p class="text-2xl font-bold" style="color: {{ $cardText }};">$ {{ number_format($salesMonth, 2) }}</p>
-                            <small style="color: {{ $mutedText }};">{{ $ordersMonth }} órdenes</small>
-                            @if($salesChange !== null)
-                                <small class="d-block {{ $salesChange >= 0 ? 'text-success' : 'text-danger' }}">
-                                    <i class="bi {{ $salesChange >= 0 ? 'bi-arrow-up' : 'bi-arrow-down' }}"></i>
-                                    {{ number_format(abs($salesChange), 1) }} % vs. mes anterior
-                                </small>
-                            @endif
-                        </div>
-                        <div class="rounded shadow-sm p-4" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                            <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Margen bruto del mes</h6>
-                            <p class="text-2xl font-bold {{ ($monthTotals['margin'] ?? 0) < 0 ? 'text-danger' : '' }}" style="color: {{ $cardText }};">$ {{ number_format($monthTotals['margin'] ?? 0, 2) }}</p>
-                            <small style="color: {{ $mutedText }};">{{ number_format($monthTotals['margin_pct'] ?? 0, 1) }} % · {{ $productsCount }} productos, {{ $lowStock }} con stock bajo</small>
-                        </div>
-                        <div class="rounded shadow-sm p-4" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                            <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Facturas por pagar</h6>
-                            <p class="text-2xl font-bold" style="color: {{ $cardText }};">{{ $pendingInvoices }}</p>
-                            <small style="color: {{ $mutedText }};">$ {{ number_format($pendingInvoiceAmount, 2) }} pendientes</small>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        <div class="lg:col-span-2 rounded shadow-sm" id="dashboardChart" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                            <div class="px-4 py-3 font-bold border-b" style="background: {{ $cardBg }}; color: {{ $cardText }}; border-color: {{ $borderColor }};">Ventas del mes</div>
-                            <div class="p-4" style="height: 300px;">
-                                <canvas id="salesChart" height="120"></canvas>
-                            </div>
-                        </div>
-                        <div class="rounded shadow-sm" id="dashboardLowStock" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                            <div class="px-4 py-3 font-bold border-b" style="background: {{ $cardBg }}; color: {{ $cardText }}; border-color: {{ $borderColor }};">Stock bajo</div>
-                            <ul class="divide-y" style="border-color: {{ $borderColor }};">
-                                @forelse($lowStockProducts as $product)
-                                    <li class="flex justify-between items-center px-4 py-2" style="background: {{ $cardBg }}; color: {{ $cardText }};">
-                                        <span>{{ Str::limit($product->name, 25) }}</span>
-                                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold text-white" style="background: #dc3545;">{{ $product->stock_quantity }}</span>
-                                    </li>
-                                @empty
-                                    <li class="px-4 py-2" style="background: {{ $cardBg }}; color: {{ $mutedText }};">No hay productos con stock bajo.</li>
-                                @endforelse
-                            </ul>
-                        </div>
-                    </div>
-
-                    {{-- Ranking del mes --}}
-                    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
-                        <h3 class="text-lg font-semibold mb-0" style="color: {{ $cardText }};">Este mes</h3>
-                        <a href="{{ route('reports.sales') }}" class="btn btn-sm btn-outline-accent" style="border-color: {{ $themeAccent }}; color: {{ $themeAccent }};">
-                            <i class="bi bi-bar-chart"></i> Informe de ventas completo
-                        </a>
-                    </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="dashboardRanking">
-                        @foreach([
-                            ['title' => 'Por vendedor', 'rows' => $topSellers, 'group' => 'seller'],
-                            ['title' => 'Por categoría', 'rows' => $topCategories, 'group' => 'category'],
-                            ['title' => 'Productos más vendidos', 'rows' => $topProducts, 'group' => 'product'],
-                        ] as $block)
-                            <div class="rounded shadow-sm" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                                <div class="px-4 py-3 font-bold border-b d-flex justify-content-between" style="color: {{ $cardText }}; border-color: {{ $borderColor }};">
-                                    <span>{{ $block['title'] }}</span>
-                                    <a href="{{ route('reports.sales', ['group' => $block['group']]) }}" class="small fw-normal" style="color: {{ $themeAccent }};">Ver todo</a>
-                                </div>
-                                <ul class="divide-y mb-0 ps-0" style="border-color: {{ $borderColor }};">
-                                    @forelse($block['rows'] as $r)
-                                        <li class="px-4 py-2" style="color: {{ $cardText }}; list-style: none;">
-                                            <div class="flex justify-between items-center">
-                                                <span class="small">{{ Str::limit($r['label'], 28) }}</span>
-                                                <span class="small fw-semibold">$ {{ number_format($r['net'], 2) }}</span>
-                                            </div>
-                                            <div class="progress mt-1" style="height: 4px; background: {{ $borderColor }};">
-                                                <div class="progress-bar" style="width: {{ $r['share'] }}%; background: {{ $themeAccent }};"></div>
-                                            </div>
-                                            <div class="small" style="color: {{ $mutedText }}; font-size: .75rem;">
-                                                {{ number_format($r['share'], 1) }} % de la venta · margen {{ number_format($r['margin_pct'], 1) }} %
-                                            </div>
-                                        </li>
-                                    @empty
-                                        <li class="px-4 py-2 small" style="color: {{ $mutedText }}; list-style: none;">Sin ventas este mes.</li>
-                                    @endforelse
-                                </ul>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
+<div class="dash geme-panel">
+    {{-- Encabezado --}}
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+        <div>
+            <h1 class="h3 mb-0">Hola, {{ $user->name }}</h1>
+            <div class="text-muted small">{{ ucfirst(now()->locale('es')->translatedFormat('l j \d\e F, H:i')) }}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            @if($activeShift)
+                <span class="badge rounded-pill bg-success"><i class="bi bi-check-circle"></i> Caja abierta</span>
+            @elseif($canSell)
+                <span class="badge rounded-pill bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Caja cerrada</span>
+            @endif
+            @if($canSell)
+                <a href="{{ route('pos.index') }}" class="btn btn-primary btn-sm"><i class="bi bi-cart-check"></i> {{ $activeShift ? 'Ir al TPV' : 'Abrir caja' }}</a>
+            @endif
+            @if($isAnalyst)
+                <a href="{{ route('reports.sales') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-bar-chart"></i> Informe de ventas</a>
             @endif
         </div>
     </div>
 
-    <style>
-        .dashboard-list-item {
-            transition: background-color 0.12s ease, color 0.12s ease;
-        }
-        .dashboard-list-item:hover {
-            background-color: {{ $themeAccent }}15 !important;
-        }
-        .dashboard-list-item:hover .bi-chevron-right {
-            color: {{ $themeAccent }} !important;
-        }
-        .btn-accent {
-            font-weight: 600;
-            border-radius: 999px;
-            transition: filter 0.15s ease, transform 0.15s ease;
-        }
-        .btn-accent:hover {
-            filter: brightness(1.1);
-            transform: translateY(-1px);
-        }
-        .btn-outline-accent:hover {
-            background: {{ $themeAccent }}22;
-        }
-    </style>
+    @if($isAnalyst)
+        @php
+            $delta = function ($v, $suffix = 'vs. mes anterior') {
+                if ($v === null) return '<span class="delta flat">sin comparación</span>';
+                $cls = $v > 0.5 ? 'up' : ($v < -0.5 ? 'down' : 'flat');
+                $icon = $v > 0.5 ? 'bi-arrow-up-right' : ($v < -0.5 ? 'bi-arrow-down-right' : 'bi-dash');
+                return '<span class="delta ' . $cls . '"><i class="bi ' . $icon . '"></i>' . number_format(abs($v), 1, ',', '.') . ' %</span> <span class="small text-muted">' . e($suffix) . '</span>';
+            };
+            $ticketChange = $prevAvgTicket > 0 ? round(($avgTicket - $prevAvgTicket) / $prevAvgTicket * 100, 1) : null;
+        @endphp
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-    <script>
-        function startDashboardTour() {
-            if (typeof introJs === 'undefined') return;
-            introJs()
-                .setOptions({
-                    steps: [
-                        { element: '#dashboardPos', intro: 'Desde aquí accedes al TPV para registrar ventas rápidas.' },
-                        { element: '#dashboardProducts', intro: 'Crea y edita productos, categorías y precios.' },
-                        { element: '#dashboardStock', intro: 'Gestiona stock, entradas, salidas y movimientos.' },
-                        { element: '#dashboardSearch', intro: 'Busca productos por nombre o código de barras.' },
-                        { element: '#dashboardCatalog', intro: 'Abre el catálogo público que ven tus clientes.' }
-                    ],
-                    nextLabel: 'Siguiente',
-                    prevLabel: 'Anterior',
-                    skipLabel: 'Saltar',
-                    doneLabel: 'Listo',
-                    showProgress: true,
-                    showBullets: true,
-                })
-                .start();
-        }
+        {{-- KPIs --}}
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-xl-3">
+                <div class="card kpi h-100"><div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="kpi-label">Ventas hoy</span><span class="kpi-icon"><i class="bi bi-cash-stack"></i></span>
+                    </div>
+                    <div class="kpi-value">{{ $money($today['total']) }}</div>
+                    <div class="mt-1">{!! $delta($todayChange, 'vs. ayer a esta hora') !!}</div>
+                    <div class="small text-muted mt-1">{{ $today['tickets'] }} tickets</div>
+                </div></div>
+            </div>
+            <div class="col-6 col-xl-3">
+                <div class="card kpi h-100"><div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="kpi-label">Ventas del mes</span><span class="kpi-icon"><i class="bi bi-graph-up-arrow"></i></span>
+                    </div>
+                    <div class="kpi-value">{{ $money($month['total']) }}</div>
+                    <div class="mt-1">{!! $delta($monthChange) !!}</div>
+                    <div class="small text-muted mt-1">Neto {{ $money($month['net']) }} · {{ $month['tickets'] }} tickets</div>
+                </div></div>
+            </div>
+            <div class="col-6 col-xl-3">
+                <div class="card kpi h-100"><div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="kpi-label">Margen bruto del mes</span><span class="kpi-icon"><i class="bi bi-pie-chart"></i></span>
+                    </div>
+                    @if($month['margin_pct'] === null && $month['net'] > 0)
+                        <div class="kpi-value text-warning">Sin costos</div>
+                        <div class="small text-muted mt-1">Los productos vendidos no tienen costo registrado.</div>
+                    @else
+                        <div class="kpi-value {{ $month['margin'] < 0 ? 'text-danger' : '' }}">{{ $money($month['margin']) }}</div>
+                        <div class="small text-muted mt-1">{{ $pct($month['margin_pct']) }} sobre la venta con costo</div>
+                        @if($month['net'] > 0 && $month['cost_coverage'] < 100)
+                            <div class="small text-warning"><i class="bi bi-exclamation-triangle"></i> {{ number_format(100 - $month['cost_coverage'], 0) }} % de la venta sin costo</div>
+                        @endif
+                    @endif
+                </div></div>
+            </div>
+            <div class="col-6 col-xl-3">
+                <div class="card kpi h-100"><div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="kpi-label">Ticket medio</span><span class="kpi-icon"><i class="bi bi-receipt"></i></span>
+                    </div>
+                    <div class="kpi-value">{{ $money($avgTicket) }}</div>
+                    <div class="mt-1">{!! $delta($ticketChange) !!}</div>
+                    <div class="small text-muted mt-1">
+                        <a href="{{ route('supplier-ap.dashboard') }}">{{ $payables['count'] }} facturas por pagar</a>
+                        @if($payables['overdue'])<span class="text-danger">· {{ $payables['overdue'] }} vencidas</span>@endif
+                    </div>
+                </div></div>
+            </div>
+        </div>
 
-        const labels = @json($chartLabels);
-        const values = @json($chartValues);
-        const isDark = {{ $isLight ? 'false' : 'true' }};
-        if (labels.length > 0 && document.getElementById('salesChart')) {
-            new Chart(document.getElementById('salesChart'), {
-                type: 'line',
-                data: {
-                    labels: labels.map(d => d.split('-')[2]),
-                    datasets: [{
-                        label: 'Ventas ($)',
-                        data: values,
-                        borderColor: '{{ $themeAccent }}',
-                        backgroundColor: '{{ $themeAccent }}22',
-                        fill: true,
-                        tension: 0.3,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: isDark ? '#334155' : '#e5e7eb' }, ticks: { color: isDark ? '#cbd5e1' : '#374151' } },
-                        x: { grid: { display: false }, ticks: { color: isDark ? '#cbd5e1' : '#374151' } }
-                    }
-                }
+        {{-- Gráficos --}}
+        <div class="row g-3 mb-3">
+            <div class="col-lg-8">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Ventas por día</span>
+                        <span class="small text-muted fw-normal">Este mes frente al mes anterior</span>
+                    </div>
+                    <div class="card-body" style="height: 300px;"><canvas id="dailyChart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header">Formas de pago (mes)</div>
+                    <div class="card-body d-flex align-items-center justify-content-center" style="height: 300px;">
+                        @if(count($paymentMethods))
+                            <canvas id="paymentsChart"></canvas>
+                        @else
+                            <span class="text-muted">Sin cobros este mes.</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Rankings --}}
+        <div class="row g-3 mb-3">
+            @foreach([
+                ['title' => 'Por vendedor', 'icon' => 'bi-person-badge', 'rows' => $topSellers, 'group' => 'seller'],
+                ['title' => 'Por categoría', 'icon' => 'bi-tags', 'rows' => $topCategories, 'group' => 'category'],
+                ['title' => 'Productos más vendidos', 'icon' => 'bi-trophy', 'rows' => $topProducts, 'group' => 'product'],
+            ] as $block)
+                <div class="col-lg-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi {{ $block['icon'] }}"></i> {{ $block['title'] }}</span>
+                            <a href="{{ route('reports.sales', ['group' => $block['group']]) }}" class="small fw-normal">Ver todo</a>
+                        </div>
+                        <div class="card-body py-2">
+                            @forelse($block['rows'] as $r)
+                                <div class="rank-row py-2">
+                                    <div class="d-flex justify-content-between gap-2">
+                                        <span class="text-truncate">{{ $r['label'] }}</span>
+                                        <span class="fw-semibold text-nowrap">{{ $money($r['net']) }}</span>
+                                    </div>
+                                    <div class="rank-bar my-1"><span style="width: {{ $r['share'] }}%"></span></div>
+                                    <div class="small text-muted">
+                                        {{ number_format($r['share'], 1, ',', '.') }} % de la venta ·
+                                        @if($r['margin_pct'] === null)
+                                            <span class="text-warning">sin costo</span>
+                                        @else
+                                            margen {{ $pct($r['margin_pct']) }}
+                                        @endif
+                                        @if($block['group'] === 'product') · {{ rtrim(rtrim(number_format($r['quantity'], 2, ',', '.'), '0'), ',') }} uds.@endif
+                                        @if($block['group'] === 'seller') · {{ $r['tickets'] }} tickets @endif
+                                    </div>
+                                </div>
+                            @empty
+                                <p class="text-muted mb-0 py-2">Sin ventas este mes.</p>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Ventas por hora (mes)</span><span class="small text-muted fw-normal">Horas pico</span>
+                    </div>
+                    <div class="card-body" style="height: 240px;"><canvas id="hourlyChart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Últimas ventas</span><span class="small text-muted fw-normal">{{ $today['tickets'] }} hoy</span>
+                    </div>
+                    <div class="card-body py-2"><ul class="list-clean">
+                        @forelse($recentSales as $o)
+                            <li class="rank-row py-2 d-flex justify-content-between gap-2">
+                                <span class="text-truncate">
+                                    <span class="small text-muted">{{ $o->created_at->format('d/m H:i') }}</span>
+                                    {{ $o->user?->name ?? '—' }}
+                                </span>
+                                <span class="fw-semibold text-nowrap">{{ $money($o->total) }}</span>
+                            </li>
+                        @empty
+                            <li class="text-muted py-2">Aún no hay ventas.</li>
+                        @endforelse
+                    </ul></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Stock bajo el mínimo</span>
+                        <span class="badge rounded-pill {{ $lowStockCount ? 'bg-danger' : 'bg-success' }}">{{ $lowStockCount }}</span>
+                    </div>
+                    <div class="card-body py-2"><ul class="list-clean">
+                        @forelse($lowStockProducts as $p)
+                            <li class="rank-row py-2 d-flex justify-content-between gap-2">
+                                <span class="text-truncate">{{ $p->name }}</span>
+                                <span class="text-nowrap small">
+                                    <strong class="{{ $p->stock_quantity <= 0 ? 'text-danger' : 'text-warning' }}">{{ rtrim(rtrim(number_format($p->stock_quantity, 2, ',', '.'), '0'), ',') }}</strong>
+                                    <span class="text-muted">/ mín. {{ rtrim(rtrim(number_format($p->reorder_point, 2, ',', '.'), '0'), ',') }}</span>
+                                </span>
+                            </li>
+                        @empty
+                            <li class="text-muted py-2">Todo por encima del mínimo.</li>
+                        @endforelse
+                        @if($lowStockCount > $lowStockProducts->count())
+                            <li class="pt-2 small"><a href="{{ route('inventory.dashboard') }}">Ver los {{ $lowStockCount }} productos</a></li>
+                        @endif
+                    </ul></div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Accesos rápidos --}}
+    <div class="mb-2 section-title">{{ $isAnalyst ? 'Accesos rápidos' : 'Módulos' }}</div>
+    <div class="row g-3 mb-3">
+        @foreach($moduleGroups as $groupName => $mods)
+            <div class="col-md-6 {{ count($moduleGroups) > 2 ? 'col-xl-3' : 'col-xl-6' }}">
+                <div class="card h-100">
+                    <div class="card-header small text-uppercase" style="letter-spacing: .05em;">{{ $groupName }}</div>
+                    <div class="card-body d-grid gap-2">
+                        @foreach($mods as $m)
+                            <a href="{{ $m['route'] }}" class="module-link" @if(!empty($m['target'])) target="{{ $m['target'] }}" @endif>
+                                <i class="bi {{ $m['icon'] }}"></i><span>{{ $m['label'] }}</span><i class="bi bi-chevron-right ms-auto small opacity-50"></i>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+</div>
+@endsection
+
+@if($isAnalyst)
+@push('scripts')
+@php
+    $paymentChart = [
+        'labels' => array_map(fn ($m) => $methodLabels[$m] ?? $m, array_keys($paymentMethods)),
+        'values' => array_values($paymentMethods),
+    ];
+@endphp
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+    (function () {
+        if (typeof Chart === 'undefined') return;
+        const accent = @json($accent);
+        const isLight = @json($isLight);
+        const grid = isLight ? 'rgba(15,23,42,.08)' : 'rgba(148,163,184,.15)';
+        const text = isLight ? '#334155' : '#cbd5e1';
+        Chart.defaults.color = text;
+        Chart.defaults.font.family = 'inherit';
+        const money = v => '$ ' + Number(v).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const daily = {{ Js::from($daily) }};
+        new Chart(document.getElementById('dailyChart'), {
+            data: {
+                labels: daily.labels,
+                datasets: [
+                    { type: 'bar', label: 'Este mes', data: daily.current, backgroundColor: accent, borderRadius: 6, maxBarThickness: 28, order: 2 },
+                    { type: 'line', label: 'Mes anterior', data: daily.previous, borderColor: 'rgba(148,163,184,.9)', borderDash: [5, 4], pointRadius: 0, tension: .3, fill: false, order: 1 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } }, tooltip: { callbacks: { title: i => 'Día ' + i[0].label, label: c => c.dataset.label + ': ' + money(c.parsed.y) } } },
+                scales: { y: { beginAtZero: true, grid: { color: grid }, ticks: { callback: v => '$' + v } }, x: { grid: { display: false } } }
+            }
+        });
+
+        const payments = {{ Js::from($paymentChart) }};
+        if (document.getElementById('paymentsChart')) {
+            new Chart(document.getElementById('paymentsChart'), {
+                type: 'doughnut',
+                data: { labels: payments.labels, datasets: [{ data: payments.values, backgroundColor: [accent, '#6366f1', '#f59e0b', '#ec4899', '#14b8a6', '#94a3b8', '#ef4444'], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } }, tooltip: { callbacks: { label: c => c.label + ': ' + money(c.parsed) } } } }
             });
         }
-    </script>
-</x-app-layout>
+
+        const hourly = {{ Js::from($hourly) }};
+        new Chart(document.getElementById('hourlyChart'), {
+            type: 'bar',
+            data: { labels: hourly.labels, datasets: [{ label: 'Ventas', data: hourly.values, backgroundColor: accent + 'aa', borderRadius: 4 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => money(c.parsed.y) } } },
+                scales: { y: { beginAtZero: true, grid: { color: grid }, ticks: { callback: v => '$' + v } }, x: { grid: { display: false } } }
+            }
+        });
+    })();
+</script>
+@endpush
+@endif

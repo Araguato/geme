@@ -1,8 +1,10 @@
 @extends('layout')
 
 @section('content')
+<div class="geme-panel">
 @php
     $money = fn ($v) => number_format((float) $v, 2, ',', '.');
+    $pct = fn ($v) => $v === null ? '—' : number_format($v, 1, ',', '.') . ' %';
     $query = request()->except('group');
 @endphp
 
@@ -92,9 +94,18 @@
     <div class="col-6 col-lg-3"><div class="card card-body py-2">
         <div class="text-muted small">Margen bruto</div>
         <div class="fs-4 fw-bold {{ $totals['margin'] < 0 ? 'text-danger' : 'text-success' }}">{{ $money($totals['margin']) }}</div>
-        <div class="text-muted small">{{ number_format($totals['margin_pct'], 1, ',', '.') }} % sobre venta neta</div>
+        <div class="text-muted small">{{ $pct($totals['margin_pct']) }} sobre la venta con costo</div>
     </div></div>
 </div>
+
+@if($totals['net'] > 0 && $totals['cost_coverage'] < 100)
+    <div class="alert alert-warning py-2 small">
+        <i class="bi bi-exclamation-triangle"></i>
+        {{ $money($totals['uncosted']) }} de venta neta ({{ number_format(100 - $totals['cost_coverage'], 1, ',', '.') }} %) corresponde a productos
+        <strong>sin costo registrado</strong>. Ese importe no entra en el margen; carga el costo en la ficha del producto
+        o regístralo con una factura de compra para que el margen sea completo.
+    </div>
+@endif
 
 <ul class="nav nav-tabs mb-0">
     @foreach($groupLabels as $key => $label)
@@ -110,7 +121,7 @@
             <p class="text-muted mb-0">No hay ventas en el período seleccionado.</p>
         @else
             @if($rows->count() > 1)
-                <div style="height: {{ min(40 + $rows->take(15)->count() * 28, 460) }}px;" class="mb-3">
+                <div style="height: {{ max(180, min(60 + $rows->take(15)->count() * 34, 520)) }}px;" class="mb-3">
                     <canvas id="salesGroupChart"></canvas>
                 </div>
             @endif
@@ -151,7 +162,12 @@
                                 @if($group === 'seller')<td class="text-end">{{ $money($r['avg_ticket']) }}</td>@endif
                                 <td class="text-end">{{ $money($r['cost']) }}</td>
                                 <td class="text-end {{ $r['margin'] < 0 ? 'text-danger' : '' }}">{{ $money($r['margin']) }}</td>
-                                <td class="text-end">{{ number_format($r['margin_pct'], 1, ',', '.') }} %</td>
+                                <td class="text-end">
+                                    {{ $pct($r['margin_pct']) }}
+                                    @if($r['cost_coverage'] < 100)
+                                        <i class="bi bi-exclamation-triangle text-warning" title="{{ number_format(100 - $r['cost_coverage'], 0) }} % de esta venta no tiene costo registrado"></i>
+                                    @endif
+                                </td>
                                 <td class="text-end">
                                     <div class="d-flex align-items-center justify-content-end gap-1">
                                         <div class="progress flex-grow-1" style="height: 6px; max-width: 60px;">
@@ -173,6 +189,7 @@
     El costo sale del kardex (costo promedio en el momento de la venta). Para productos sin control de stock
     o preparados con receta se usa el costo actual del producto. Las devoluciones (notas de crédito) no se descuentan.
 </p>
+</div>
 @endsection
 
 @push('scripts')

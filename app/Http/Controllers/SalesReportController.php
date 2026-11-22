@@ -95,11 +95,11 @@ class SalesReportController extends Controller
         return response()->streamDownload(function () use ($rows, $f) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM para que Excel lea bien los acentos
-            fputcsv($out, [self::GROUP_LABELS[$f['group']], 'Tickets', 'Cantidad', 'Venta neta', 'IVA', 'Total', 'Costo', 'Margen', 'Margen %', '% de la venta'], ';');
+            fputcsv($out, [self::GROUP_LABELS[$f['group']], 'Tickets', 'Cantidad', 'Venta neta', 'IVA', 'Total', 'Costo', 'Margen', 'Margen %', '% de la venta', '% de la venta con costo'], ';');
             foreach ($rows as $r) {
                 fputcsv($out, [
                     $this->safeCsv($r['label']), $r['tickets'], $this->num($r['quantity'], 3), $this->num($r['net']), $this->num($r['tax']),
-                    $this->num($r['total']), $this->num($r['cost']), $this->num($r['margin']), $this->num($r['margin_pct'], 1), $this->num($r['share'], 1),
+                    $this->num($r['total']), $this->num($r['cost']), $this->num($r['margin']), $r['margin_pct'] === null ? '' : $this->num($r['margin_pct'], 1), $this->num($r['share'], 1), $this->num($r['cost_coverage'], 1),
                 ], ';');
             }
             fclose($out);
