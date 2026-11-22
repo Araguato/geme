@@ -99,6 +99,37 @@ La ISO/IEC 27001:2022 no prohíbe la IA. Exige que **todo tratamiento de informa
 - Registrar al proveedor de IA en el inventario de proveedores.
 - Valorar la **ISO/IEC 42001** (sistema de gestión de IA), que se integra con la 27001, si la IA pasa a ser un producto central.
 
+### 3.5 Decisión: IA a petición del cliente (implementada el 22-11-2026)
+
+La IA es **opcional y está desactivada por defecto** en cada tienda. Solo el **Admin** la configura en *Administración → Inteligencia artificial*.
+
+| Modo | Quién paga | Qué se envía |
+|---|---|---|
+| **Desactivada** (por defecto) | — | Nada. Estadísticas e informes funcionan igual (no usan IA). |
+| **Clave propia** | El cliente, a su proveedor | Lo que autorice, a su proveedor (cualquier API compatible con OpenAI: OpenAI, Mistral, DeepSeek, Qwen, OpenRouter, Ollama…). |
+| **Gestionada por GEME** | Quorisk (cobrable como complemento) | Lo que autorice, al proveedor contratado por Quorisk; límite mensual de tokens por tienda. Solo disponible si el servidor define `AI_MANAGED_*`. |
+
+**Garantías implementadas** (commit `3bb31b4`, tests `AiOptInTest`):
+- **Vista previa exacta** de los datos que se enviarían, en dos niveles: *Solo totales* o *Con detalle* (productos más vendidos y vendedores seudonimizados como "Vendedor 1"). Nunca datos personales de clientes ni nombres de empleados; un test lo verifica.
+- **Consentimiento registrado** (usuario, fecha, versión del texto, nivel de datos). Cambiar el nivel exige volver a autorizar. Sin consentimiento válido no se envían datos.
+- **Clave de API cifrada** con la APP_KEY, nunca mostrada (solo los 4 últimos caracteres). La auditoría registra el cambio pero no la clave.
+- **Desactivar** borra clave, URL, modelo y consentimiento al instante.
+- **Protección SSRF:** solo `https://` y nunca redes internas o reservadas (127.0.0.1, 10.x, 169.254.x…), sin seguir redirecciones. Para un Ollama en red local hay que permitirlo en el servidor (`AI_ALLOW_PRIVATE_URLS=true`).
+- **Registro de uso** (`ai_usage_logs`): usuario, modelo, proveedor, tokens y estado, sin contenido. Visible para el Admin.
+- **"Probar conexión"** envía solo un mensaje de prueba, sin datos del negocio (máx. 6 por minuto).
+
+**Pendiente:** primeras funciones de IA (resumen del negocio, preguntas sobre las cifras) ejecutadas en **cola** (worker en CapRover), con caché.
+
+**Variables de entorno** (CapRover → App Configs), todas opcionales:
+
+| Variable | Uso |
+|---|---|
+| `AI_MANAGED_BASE_URL`, `AI_MANAGED_API_KEY`, `AI_MANAGED_MODEL` | Activan el modo "Gestionada por GEME" |
+| `AI_MANAGED_MONTHLY_TOKENS` | Límite mensual por tienda (por defecto 300.000) |
+| `AI_TIMEOUT` | Espera máxima en segundos (por defecto 25) |
+| `AI_MAX_OUTPUT_TOKENS` | Tokens máximos de respuesta (por defecto 800) |
+| `AI_ALLOW_PRIVATE_URLS` | `true` solo en instalaciones propias con IA en red local |
+
 ### 3.4 Financiamiento basado en datos (aparcado)
 
 Es el uso de mayor riesgo:
