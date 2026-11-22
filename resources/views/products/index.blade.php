@@ -32,6 +32,15 @@
     <div class="col-md-2 d-flex align-items-end">
         <button type="submit" class="btn btn-outline-secondary w-100">{{ __('ui.products.filter_button') }}</button>
     </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="sin_ubicacion" value="1" id="sinUbicacion" onchange="this.form.submit()" @checked($missingLocation)>
+            <label class="form-check-label" for="sinUbicacion">
+                Sin ubicación
+                @if($missingLocationCount)<span class="badge rounded-pill bg-warning text-dark">{{ $missingLocationCount }}</span>@endif
+            </label>
+        </div>
+    </div>
 </form>
 
 @if(session('success'))
@@ -80,7 +89,13 @@
                 @php
                     $location = collect([$product->warehouse?->name, $product->location?->name, $product->aisle, $product->shelf, $product->rack, $product->bin, $product->section])->filter()->implode(' / ');
                 @endphp
-                {{ $location ?: '-' }}
+                @if($location)
+                    {{ $location }}
+                @elseif(!$product->is_service && !$product->is_prepared)
+                    <span class="badge bg-warning text-dark" title="Sin ubicación asignada"><i class="bi bi-geo-alt"></i> Sin ubicación</span>
+                @else
+                    -
+                @endif
             </td>
             <td>$ {{ number_format($product->price, 2) }}</td>
             <td>{{ $product->is_active ? 'Sí' : 'No' }}</td>

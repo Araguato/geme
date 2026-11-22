@@ -52,7 +52,7 @@
                 <select name="warehouse_id" id="warehouse_id" class="form-select" onchange="filterProductLocations()">
                     <option value="">Sin asignar</option>
                     @foreach($warehouses as $warehouse)
-                        <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
+                        <option value="{{ $warehouse->id }}" @selected(old('warehouse_id', $defaultWarehouseId) == $warehouse->id)>{{ $warehouse->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -61,7 +61,7 @@
                 <select name="location_id" id="location_id" class="form-select" onchange="showLocationDetails()">
                     <option value="">Sin asignar</option>
                     @foreach($locations as $location)
-                        <option value="{{ $location->id }}" data-warehouse="{{ $location->warehouse_id }}" data-aisle="{{ $location->aisle }}" data-shelf="{{ $location->shelf }}" data-rack="{{ $location->rack }}" data-bin="{{ $location->bin }}" data-section="{{ $location->section }}">
+                        <option value="{{ $location->id }}" data-warehouse="{{ $location->warehouse_id }}" data-aisle="{{ $location->aisle }}" data-shelf="{{ $location->shelf }}" data-rack="{{ $location->rack }}" data-bin="{{ $location->bin }}" data-section="{{ $location->section }}" @selected(old('location_id', $defaultLocationId) == $location->id)>
                             {{ $location->name }} @if($location->warehouse) ({{ $location->warehouse->name }}) @endif
                         </option>
                     @endforeach
@@ -251,6 +251,7 @@
         <label class="form-check-label" for="is_active">Activo</label>
     </div>
     <button type="submit" class="btn btn-primary">Guardar</button>
+    @include('products._location_warning')
     <a href="{{ route('products.index') }}" class="btn btn-secondary">Cancelar</a>
 </form>
 
@@ -466,6 +467,7 @@
         }
 
         filterProductLocations();
+        showLocationDetails();
     })();
 
     function startProductFormTour() {

@@ -99,11 +99,64 @@
             font-weight: 600;
         }
 
+        /* Botón de menú (☰) en tablet y móvil: visible en ambos temas */
+        .navbar-geme .navbar-toggler {
+            border: 1px solid {{ $isLight ? 'rgba(15, 23, 42, 0.35)' : 'rgba(226, 232, 240, 0.35)' }};
+            padding: 0.35rem 0.6rem;
+        }
+        .navbar-geme .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='{{ $isLight ? 'rgba%2815, 23, 42, 0.9%29' : 'rgba%28226, 232, 240, 0.95%29' }}' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+        }
+        .navbar-geme .navbar-brand-home {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            max-width: 60vw;
+        }
+        .navbar-geme .navbar-brand-home img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .navbar-geme .navbar-brand-home span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Pantallas pequeñas: menú desplegado legible y tablas con desplazamiento horizontal */
+        @media (max-width: 991.98px) {
+            .navbar-geme .navbar-collapse {
+                max-height: calc(100vh - 70px);
+                overflow-y: auto;
+                padding-bottom: 0.75rem;
+            }
+        }
+        @media (max-width: 767.98px) {
+            .container table.table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+        @media (max-width: 575.98px) {
+            .container {
+                padding: 1rem 0.75rem;
+            }
+        }
+
         .navbar-geme .nav-link.active,
+        .navbar-geme .nav-link.show,
         .navbar-geme .nav-link:focus,
         .navbar-geme .nav-link:hover {
-            color: #ffffff !important;
-            text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+            @if($isLight)
+                color: {{ $themeAccentColor }} !important;
+            @else
+                color: #ffffff !important;
+                text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+            @endif
         }
 
         .dropdown-menu {
@@ -321,6 +374,11 @@
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark navbar-geme mb-4">
     <div class="container-fluid">
+        {{-- En tablet y móvil: acceso directo a Inicio junto al botón de menú --}}
+        <a class="navbar-brand navbar-brand-home d-lg-none" href="{{ auth()->check() && auth()->user()->isStaff() ? route('home') : url('/') }}" title="Inicio">
+            <img src="{{ $themeLogoUrl ?: asset('logo-quorisk.jpg') }}" alt="">
+            <span>{{ $businessName }}</span>
+        </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
                 aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>

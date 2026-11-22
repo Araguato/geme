@@ -346,6 +346,7 @@
         <label class="form-check-label" for="is_active">Activo</label>
     </div>
     <button type="submit" class="btn btn-primary">Actualizar</button>
+    @include('products._location_warning')
     <a href="{{ route('products.index') }}" class="btn btn-secondary">Cancelar</a>
     <a href="{{ route('products.label', $product) }}" target="_blank" class="btn btn-outline-info">Imprimir etiqueta</a>
 </form>

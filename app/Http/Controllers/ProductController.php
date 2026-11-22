@@ -22,10 +22,22 @@ class ProductController extends Controller
     {
         $selectedCategoryId = $request->query('category_id');
         $search = $request->query('search');
+        $missingLocation = $request->boolean('sin_ubicacion');
 
-        $query = Product::with(['category', 'barcodes'])
+        $query = Product::with(['category', 'barcodes', 'warehouse', 'location'])
             ->whereNull('parent_product_id')
             ->orderBy('name');
+
+        // Productos físicos sin ubicación asignada (servicios y preparados no la necesitan)
+        $withoutLocation = fn ($q) => $q->whereNull('location_id')
+            ->where('is_service', false)
+            ->where('is_prepared', false);
+        $missingLocationCount = Product::whereNull('parent_product_id')->where('is_active', true)
+            ->where($withoutLocation)->count();
+
+        if ($missingLocation) {
+            $query->where($withoutLocation);
+        }
 
         if ($selectedCategoryId) {
             $query->where('category_id', $selectedCategoryId);
@@ -48,7 +60,7 @@ class ProductController extends Controller
         $products = $query->get();
         $categories = Category::orderBy('name')->get();
 
-        return view('products.index', compact('products', 'categories', 'selectedCategoryId', 'search'));
+        return view('products.index', compact('products', 'categories', 'selectedCategoryId', 'search', 'missingLocation', 'missingLocationCount'));
     }
 
     public function search(Request $request)
@@ -126,7 +138,18 @@ class ProductController extends Controller
         $units = Unit::where('is_active', true)->orderBy('category')->orderBy('name')->get();
         $warehouses = Warehouse::orderBy('name')->get();
         $locations = Location::orderBy('name')->get();
-        return view('products.create', compact('categories', 'units', 'warehouses', 'locations'));
+
+        // Ubicación propuesta para productos nuevos: almacén principal → primera ubicación activa
+        // (la misma a la que va el stock cuando no se indica otra). Solo se consulta, no se crea nada.
+        $defaultWarehouse = Warehouse::where('code', 'MAIN')->first()
+            ?? Warehouse::where('is_active', true)->orderBy('sort_order')->orderBy('id')->first();
+        $defaultLocation = $defaultWarehouse
+            ? Location::where('warehouse_id', $defaultWarehouse->id)->where('is_active', true)->orderBy('sort_order')->orderBy('id')->first()
+            : null;
+        $defaultWarehouseId = $defaultLocation?->warehouse_id;
+        $defaultLocationId = $defaultLocation?->id;
+
+        return view('products.create', compact('categories', 'units', 'warehouses', 'locations', 'defaultWarehouseId', 'defaultLocationId'));
     }
 
     public function store(Request $request)
@@ -162,14 +185,15 @@ class ProductController extends Controller
             'barcodes.*.barcode' => 'nullable|string|max:50|distinct|unique:product_barcodes,barcode',
             'barcodes.*.label' => 'nullable|string|max:50',
             'barcodes.*.multiplier' => 'nullable|numeric|min:0.001',
+            // La sección de variantes oculta envía filas vacías: solo son obligatorias si se marcó "tiene variantes"
             'variant_attributes' => 'nullable|array',
-            'variant_attributes.*.name' => 'required_with:has_variants|string|max:100',
-            'variant_attributes.*.values' => 'required_with:has_variants|string',
+            'variant_attributes.*.name' => 'nullable|required_with:has_variants|string|max:100',
+            'variant_attributes.*.values' => 'nullable|required_with:has_variants|string',
             'variants' => 'nullable|array',
             'variants.*.sku' => 'nullable|string|max:50|unique:products,sku',
-            'variants.*.price' => 'required_with:has_variants|numeric|min:0',
+            'variants.*.price' => 'nullable|required_with:has_variants|numeric|min:0',
             'variants.*.stock_quantity' => 'nullable|numeric|min:0',
-            'variants.*.variant_attributes' => 'required_with:has_variants|string',
+            'variants.*.variant_attributes' => 'nullable|required_with:has_variants|string',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', false);
