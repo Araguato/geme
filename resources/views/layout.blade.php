@@ -667,6 +667,13 @@
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('{{ asset('sw.js') }}');
         });
+        // Al cerrar sesión, vaciar también la caché del service worker
+        document.addEventListener('submit', (e) => {
+            const form = e.target;
+            if (form && form.action && form.action.endsWith('/logout') && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage('geme:clear-cache');
+            }
+        });
     }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

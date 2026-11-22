@@ -294,7 +294,7 @@ Un modelo abierto pequeño en un servidor propio con GPU tiene un coste **fijo**
 | 2 | ~~Marketing / CRM~~ ✅ hecho | Paridad con la competencia | — |
 | 3 | Cuentas por cobrar y conciliación | Paridad con la competencia | — |
 | 4 | Asistente de IA (base ✅ hecha: activación opcional) | Diferenciación | Colas y worker en CapRover, proveedor de IA con contrato, actualización del SGSI |
-| — | Revisar caché del *service worker* (ver 6ter) | Seguridad de datos en dispositivos compartidos | — |
+| — | ~~Revisar caché del *service worker*~~ ✅ corregido (ver 6ter) | Seguridad de datos en dispositivos compartidos | — |
 | 5 | Financiamiento basado en datos | Modelo de negocio | Socio financiero, revisión legal (RGPD, Reglamento de IA), consentimiento |
 
 ---
@@ -323,13 +323,24 @@ Un modelo abierto pequeño en un servidor propio con GPU tiene un coste **fijo**
   - Ambos incluyen **solo** clientes con consentimiento.
 - **Pedidos en línea:** se vinculan a una ficha de cliente (buscada o creada por correo) y copian el consentimiento dado en el registro web.
 
-## 6ter. Hallazgo: caché del *service worker* (pendiente de decidir)
+## 6ter. Hallazgo: caché del *service worker* ✅ corregido
 
-`public/sw.js` guarda en la caché del navegador **todas** las respuestas GET, incluidas páginas con sesión iniciada (informes, fichas de clientes, nómina). Si no hay conexión, muestra la copia guardada.
+**Hallazgo:** `public/sw.js` guardaba en la caché del navegador **todas** las respuestas GET, incluidas páginas con sesión iniciada (informes, fichas de clientes, nómina). Sin conexión mostraba la copia guardada.
 
-**Riesgo:** en tablets o PC compartidos, los datos quedan en el dispositivo después de cerrar sesión. En el peor caso, sin conexión, se podría ver una página guardada de otro usuario (ISO 27001, controles 8.10 eliminación de información, 8.12 prevención de fugas y 7.10 soportes).
+**Riesgo:** en tablets o PC compartidos los datos quedaban en el dispositivo tras cerrar sesión, y sin conexión se podía ver una página guardada de otro usuario (ISO 27001, controles 8.10 eliminación de información, 8.12 prevención de fugas y 7.10 soportes).
 
-**Propuesta:** cachear solo recursos estáticos (manifest, iconos, CSS/JS); nunca páginas HTML autenticadas; vaciar la caché al cerrar sesión.
+**Corrección aplicada (defensa en profundidad, 4 capas):**
+
+| Capa | Cambio |
+|---|---|
+| Servidor | Middleware `NoStoreAuthenticatedResponses`: toda respuesta con sesión lleva `Cache-Control: no-store, private, max-age=0`. |
+| Service worker (`sw.js`, `geme-static-v3`) | Solo cachea recursos estáticos del mismo origen (CSS/JS/imagen/fuente/manifest) con *stale-while-revalidate*. Nunca HTML, nunca respuestas `no-store`/`private`. Las navegaciones van siempre a red; sin conexión se muestra `/offline.html`, una página genérica sin datos. |
+| Migración | Al activarse, el nuevo SW borra todas las cachés antiguas (incluida `geme-pwa-v2`, que contenía páginas con datos). |
+| Cierre de sesión | `Clear-Site-Data: "cache"` en la respuesta del logout (solo HTTPS) y mensaje `geme:clear-cache` al SW desde el formulario de logout. |
+
+**Verificación:** 4 tests automáticos (`ServiceWorkerCacheSecurityTest`) y prueba en navegador real: con el SW antiguo se cacheaban `/marketing`, `/reports/sales` y `/dashboard`; tras actualizar solo queda `geme-static-v3` con estáticos, y sin conexión aparece «Sin conexión» sin ningún dato de clientes.
+
+**Nota residual:** los navegadores que no hayan abierto GEME desde el despliegue conservan la caché antigua hasta su próxima visita (el SW se actualiza al abrir la app).
 
 ---
 

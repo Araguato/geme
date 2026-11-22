@@ -4,6 +4,7 @@ use App\Http\Middleware\SetLocaleFromSettings;
 use App\Http\Middleware\EnsureLicenseValid;
 use App\Http\Middleware\TrackUserActivity;
 use App\Http\Middleware\RoleMiddleware;
+use App\Http\Middleware\NoStoreAuthenticatedResponses;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureLicenseValid::class,
             SetLocaleFromSettings::class,
             TrackUserActivity::class,
+            NoStoreAuthenticatedResponses::class,
         ]);
 
         $middleware->alias([

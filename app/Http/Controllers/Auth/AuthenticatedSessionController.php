@@ -54,7 +54,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        // Pide al navegador vaciar su caché de este sitio (páginas vistas durante la sesión)
+        return redirect('/')->header('Clear-Site-Data', '"cache"');
     }
 
     protected function validateTurnstile(Request $request): void
