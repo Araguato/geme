@@ -15,6 +15,7 @@
 2. **La IA no contradice la ISO 27001**, siempre que se trate como un proveedor externo más: datos minimizados, contrato con el proveedor, control de acceso por rol, registro de uso y supervisión humana. El financiamiento basado en datos es el caso de mayor riesgo y queda **aparcado** hasta tener socio financiero y revisión legal.
 3. **SENIAT:** la Providencia **SNAT/2026/00093** (G.O. 43.484, 21-10-2026) entra en vigor el **19 de abril de 2027**. Las facturas deberán emitirse por medios digitales autorizados (portal o app del SENIAT, imprentas digitales o proveedores tecnológicos autorizados) o por máquinas fiscales. **GEME debe integrarse con uno de esos medios.** Es la prioridad número uno, porque tiene fecha legal.
 4. **Rendimiento:** una IA consumida por API **no carga el servidor de forma relevante**, siempre que las llamadas se hagan en segundo plano (colas) y los datos se preparen agregados y en caché. Ejecutar un modelo de IA propio en el mismo VPS **no es recomendable**.
+5. **Coste:** basta un **modelo pequeño** (unos 0,40 $/mes por tienda); un modelo grande costaría 20–40 veces más sin aportar valor. La mayor parte del análisis se resuelve con SQL, sin IA.
 
 **Orden propuesto:** (1) cumplimiento SENIAT → (2) Marketing/CRM → (3) asistente de IA → (4) financiamiento (aparcado).
 
@@ -134,6 +135,62 @@ Es el uso de mayor riesgo:
 
 ---
 
+## 4bis. Coste y tipo de modelo de IA
+
+### 4bis.1 No hace falta un modelo grande
+
+Para GEME la IA solo tiene que **leer cifras ya calculadas y explicarlas en español**. Eso lo hace bien un modelo pequeño. Los modelos grandes (Claude Opus/Sonnet, GPT de gama alta, Gemini Pro) se pagan por razonamiento complejo que aquí no se usa.
+
+**Regla de diseño:** la mayor parte del "análisis" **no necesita IA**. Tendencias, alertas de stock, caída de ventas, márgenes negativos, efecto de la tasa BCV o ranking de clientes son **cálculos SQL deterministas**, ya hechos en parte (`SalesReportService`, panel por rol). Esos cálculos cuestan 0 $ y son exactos y auditables. El modelo de lenguaje solo redacta el resumen y responde preguntas sobre esos números.
+
+### 4bis.2 Precios de modelos pequeños (USD por millón de tokens, nov. 2026)
+
+| Proveedor | Modelo | Entrada | Salida | Observaciones |
+|---|---|---|---|---|
+| Anthropic | Claude Haiku 5.5 | 0,10 | 0,50 | Batch −50 %; caché a 0,1x |
+| OpenAI | GPT-6 Luna | 0,10 | 0,50 | |
+| Mistral (UE) | Mistral Small 4 | 0,15 | 0,60 | Proveedor europeo (RGPD) |
+| Alibaba | Qwen3.8-Flash | 0,15 | 0,47 | Datos fuera de la UE (China) |
+| DeepSeek | V4.1-Flash | 0,15–0,30 | 0,60–1,20 | Datos en China |
+| Google | Gemini 3.5 Flash-Lite | 0,30 | 2,50 | |
+| *Referencia grande* | Claude Sonnet 5.5 / Opus 5.5 | 2 / 4 | 10 / 20 | 20–40 veces más caro; innecesario |
+
+Fuentes: precios oficiales de Anthropic (platform.claude.com/docs/en/about-claude/pricing) y tabla de nhimg.org, revisada el 15-11-2026 en las páginas de cada proveedor. Los precios cambian: revisar antes de contratar.
+
+### 4bis.3 Estimación de coste para GEME
+
+Supuestos: cada consulta envía unos 3.000 tokens (cifras agregadas e instrucciones) y recibe unos 600. Se suma un resumen nocturno por tienda (unos 8.000 tokens de entrada y 1.000 de salida).
+
+| Escenario | Modelo pequeño (0,10 / 0,50) | Modelo grande (Sonnet 5.5) |
+|---|---|---|
+| 1 consulta | ≈ 0,0006 $ | ≈ 0,012 $ |
+| 1 tienda, 20 consultas/día + resumen nocturno | ≈ **0,40 $/mes** | ≈ 7,6 $/mes |
+| 100 tiendas | ≈ **40 $/mes** | ≈ 760 $/mes |
+
+Con caché de las instrucciones fijas y Batch para los resúmenes nocturnos, el coste del modelo pequeño baja otro 30–50 %.
+
+### 4bis.4 Criterios de elección, además del precio
+
+1. **Contrato de datos:** que no entrene con los datos del cliente y que tenga retención limitada (ISO 27001, controles 5.19–5.23).
+2. **Ubicación de los datos:** si se opera desde Quorisk S.L. (España), es preferible un proveedor con procesamiento en la UE o con garantías RGPD. DeepSeek y Qwen procesan fuera de la UE.
+3. **Disponibilidad para Venezuela:** varios proveedores estadounidenses restringen su uso en ciertos países. Hay que **revisar los términos de uso** de cada uno respecto a servir a usuarios finales en Venezuela antes de elegir.
+4. **Calidad en español** y respuestas en formato estructurado (JSON).
+5. **Sin dependencia de un proveedor:** GEME llamará a la IA a través de una **interfaz propia** (`AiProvider`), para cambiar de proveedor con una variable de entorno.
+
+### 4bis.5 Modelo propio (autoalojado)
+
+Un modelo abierto pequeño en un servidor propio con GPU tiene un coste **fijo** (decenas o cientos de $/mes) más mantenimiento. Solo compensa con miles de tiendas o si hay requisitos de que los datos no salgan nunca de la infraestructura. **No en el VPS actual de CapRover.**
+
+### 4bis.6 Recomendación
+
+- Cálculos y alertas **sin IA** (SQL).
+- Un **modelo pequeño** (clase Haiku, Luna, Mistral Small) solo para redactar y responder.
+- **Interfaz neutral** de proveedor.
+- **Límite de gasto** por tienda y mes (por ejemplo, 1 $) y caché de respuestas.
+- Prueba piloto con 2–3 modelos sobre las mismas preguntas reales de la tienda, y elegir por calidad en español, condiciones de datos y precio.
+
+---
+
 ## 5. Cumplimiento SENIAT: Providencia SNAT/2026/00093
 
 ### 5.1 Marco normativo vigente
@@ -220,4 +277,6 @@ Es el uso de mayor riesgo:
 - Finanzas Digital, fin de la obligatoriedad de máquinas fiscales: https://finanzasdigital.com/seniat-levanta-uso-obligatorio-maquinas-fiscales-gaceta-oficial/
 - Forvis Mazars FMI 0726, derogatoria de la homologación: https://www.forvismazars.com/ve/es/insights/forvis-mazars-insights/fmi-0726-derogatoria-de-sistemas-homologados
 - El Diario, eliminación de la homologación: https://eldiario.com/2026/08/16/eliminacion-homologacion-facturacion/
+- Precios API de Anthropic: https://platform.claude.com/docs/en/about-claude/pricing
+- Comparativa de precios de modelos (15-11-2026): https://nhimg.org/llm-pricing-tracker
 - Protección de datos en Venezuela: https://www.vozdeamerica.com/a/venezuela-vulneracion-derecho-privacidad-proteccion-datos/6419822.html
