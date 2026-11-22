@@ -41,7 +41,7 @@
 | Conciliación bancaria | ✅ | ❌ |
 | Gastos | ✅ | ✅ |
 | Estadísticas | ✅ | ✅ (panel por rol, informe por vendedor, categoría y producto) |
-| Marketing / CRM | ✅ | ❌ |
+| Marketing / CRM | ✅ | ✅ (desde 22-11-2026) |
 | Asistente de IA | ✅ NINA | ❌ |
 | Crédito embebido | ✅ Fina Presta | ❌ (aparcado) |
 | Libros SENIAT y cadena de integridad | No consta en su web | ✅ |
@@ -52,7 +52,7 @@
 
 ### 2.3 Funciones a incorporar en GEME
 
-**a) Marketing / CRM** (esfuerzo bajo-medio; los datos ya existen):
+**a) Marketing / CRM** — ✅ **implementado el 22-11-2026** (commit `b120ebf`, tests `MarketingTest`). Detalle en el apartado 6bis.
 - Ficha de cliente con historial de compras, ticket medio y última visita.
 - Segmentos automáticos: frecuentes, nuevos, inactivos (más de 60 días sin comprar), por categoría preferida.
 - Exportación de segmentos (CSV) para campañas por WhatsApp o correo, con **consentimiento** registrado (`marketing_opt_in` ya existe en usuarios).
@@ -291,10 +291,45 @@ Un modelo abierto pequeño en un servidor propio con GPU tiene un coste **fijo**
 | Prioridad | Iniciativa | Motivo | Dependencias |
 |---|---|---|---|
 | 1 | Cumplimiento SNAT/2026/00093 | Obligación legal con fecha (19-04-2027) | Imprenta digital autorizada, asesor tributario |
-| 2 | Marketing / CRM | Paridad con la competencia; datos ya disponibles | Consentimiento de marketing |
+| 2 | ~~Marketing / CRM~~ ✅ hecho | Paridad con la competencia | — |
 | 3 | Cuentas por cobrar y conciliación | Paridad con la competencia | — |
-| 4 | Asistente de IA | Diferenciación | Colas y worker en CapRover, proveedor de IA con contrato, actualización del SGSI |
+| 4 | Asistente de IA (base ✅ hecha: activación opcional) | Diferenciación | Colas y worker en CapRover, proveedor de IA con contrato, actualización del SGSI |
+| — | Revisar caché del *service worker* (ver 6ter) | Seguridad de datos en dispositivos compartidos | — |
 | 5 | Financiamiento basado en datos | Modelo de negocio | Socio financiero, revisión legal (RGPD, Reglamento de IA), consentimiento |
+
+---
+
+## 6bis. Módulo Marketing / CRM (implementado)
+
+- **Acceso:** Admin y Supervisor (datos personales de clientes). Menú *Marketing* y acceso en el panel.
+- **Indicadores:** clientes registrados, con compras, con consentimiento y **% de ventas con cliente identificado** (90 días). Este último mide la calidad de los datos: si es bajo, hay que pedir el cliente en el TPV.
+- **Segmentos** (calculados al momento, solo ventas completadas):
+
+| Segmento | Regla |
+|---|---|
+| Mejores clientes | 20 % que más compró en 12 meses (máx. 20) |
+| Frecuentes | ≥ 4 compras en 90 días |
+| Nuevos | Primera compra hace ≤ 30 días |
+| En riesgo | Última compra hace 45–90 días |
+| Inactivos | Última compra hace > 90 días |
+| Sin compras | Registrado sin compras |
+
+- **Filtro** por categoría comprada en los últimos 90 días, y búsqueda.
+- **Ficha de cliente:** compras, total, ticket medio, categoría favorita, compras por mes, productos más comprados e historial.
+- **Consentimiento de marketing** en la ficha: fecha y origen (TPV, ficha, registro web). Darlo o retirarlo queda en la auditoría. Al crear un cliente desde el TPV se puede marcar en el momento.
+- **Campañas:**
+  - Enlaces de **WhatsApp** con mensaje personalizado (`{nombre}`). Se abren en el WhatsApp del usuario; GEME no envía nada por su cuenta.
+  - **Exportación CSV** auditada y protegida contra fórmulas.
+  - Ambos incluyen **solo** clientes con consentimiento.
+- **Pedidos en línea:** se vinculan a una ficha de cliente (buscada o creada por correo) y copian el consentimiento dado en el registro web.
+
+## 6ter. Hallazgo: caché del *service worker* (pendiente de decidir)
+
+`public/sw.js` guarda en la caché del navegador **todas** las respuestas GET, incluidas páginas con sesión iniciada (informes, fichas de clientes, nómina). Si no hay conexión, muestra la copia guardada.
+
+**Riesgo:** en tablets o PC compartidos, los datos quedan en el dispositivo después de cerrar sesión. En el peor caso, sin conexión, se podría ver una página guardada de otro usuario (ISO 27001, controles 8.10 eliminación de información, 8.12 prevención de fugas y 7.10 soportes).
+
+**Propuesta:** cachear solo recursos estáticos (manifest, iconos, CSS/JS); nunca páginas HTML autenticadas; vaciar la caché al cerrar sesión.
 
 ---
 
