@@ -49,6 +49,7 @@
             ['route' => route('employees.index'), 'label' => 'Empleados', 'icon' => 'bi-people'],
             ['route' => route('suppliers.index'), 'label' => 'Proveedores', 'icon' => 'bi-truck'],
             ['route' => route('settings.appearance.edit'), 'label' => 'Apariencia', 'icon' => 'bi-palette'],
+            ['route' => route('settings.ai.edit'), 'label' => 'Inteligencia artificial', 'icon' => 'bi-stars'],
         ];
     }
 @endphp

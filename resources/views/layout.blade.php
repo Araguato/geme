@@ -584,6 +584,9 @@
                                     <li>
                                         <a class="dropdown-item" href="{{ route('settings.company.edit') }}">Datos fiscales (SENIAT)</a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('settings.ai.edit') }}"><i class="bi bi-stars"></i> Inteligencia artificial</a>
+                                    </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li class="px-3 text-muted small">{{ __('ui.layout.people') }}</li>
                                     <li>

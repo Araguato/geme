@@ -40,6 +40,7 @@ use App\Http\Controllers\SalesLocationController;
 use App\Http\Controllers\AccountingDashboardController;
 use App\Http\Controllers\InventoryDashboardController;
 use App\Http\Controllers\SalesReportController;
+use App\Http\Controllers\AiSettingsController;
 use Illuminate\Support\Facades\Route;
 
 // Grupos de roles (misma matriz que el menú en resources/views/layout.blade.php)
@@ -236,6 +237,12 @@ Route::middleware(['auth', $adminOnly])->group(function () {
     // Configuración de finanzas (activar/desactivar módulo de costos)
     Route::get('settings/finances', [SettingController::class, 'editFinances'])->name('settings.finances.edit');
     Route::post('settings/finances', [SettingController::class, 'updateFinances'])->name('settings.finances.update');
+
+    // Inteligencia artificial (opcional, desactivada por defecto)
+    Route::get('settings/ai', [AiSettingsController::class, 'edit'])->name('settings.ai.edit');
+    Route::post('settings/ai', [AiSettingsController::class, 'update'])->name('settings.ai.update');
+    Route::post('settings/ai/disable', [AiSettingsController::class, 'disable'])->name('settings.ai.disable');
+    Route::post('settings/ai/test', [AiSettingsController::class, 'test'])->middleware('throttle:6,1')->name('settings.ai.test');
 
     // Datos fiscales de la empresa (SENIAT)
     Route::get('settings/company', [SettingController::class, 'editCompany'])->name('settings.company.edit');
