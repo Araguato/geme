@@ -28,6 +28,7 @@ class PartyController extends Controller
             'address' => 'nullable|string|max:500',
             'notes' => 'nullable|string',
             'is_active' => 'sometimes|boolean',
+            'marketing_opt_in' => 'sometimes|boolean',
         ]);
 
         $party = Party::create([
@@ -41,6 +42,10 @@ class PartyController extends Controller
             'notes' => $data['notes'] ?? null,
             'is_active' => $request->boolean('is_active', true),
         ]);
+
+        if ($data['type'] === 'customer' && $request->boolean('marketing_opt_in')) {
+            $party->setMarketingConsent(true, $request->query('redirect') === 'pos' ? 'tpv' : 'ficha');
+        }
 
         $redirect = $request->query('redirect');
         if ($redirect === 'pos') {

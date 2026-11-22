@@ -44,6 +44,17 @@
             <label class="form-label">Dirección</label>
             <input type="text" name="address" class="form-control" value="{{ old('address', $party->address) }}">
         </div>
+        @if($type === 'customer')
+        <div class="col-md-12">
+            <div class="form-check border rounded p-2 ps-5">
+                <input type="checkbox" name="marketing_opt_in" value="1" class="form-check-input" id="marketing_opt_in" @checked(old('marketing_opt_in', $party->marketing_opt_in))>
+                <label class="form-check-label" for="marketing_opt_in">
+                    <strong>El cliente acepta recibir promociones</strong> por WhatsApp o correo.
+                    <span class="d-block small text-muted">Pregúntaselo antes de marcarlo. Sin esta autorización no aparecerá en campañas ni exportaciones.</span>
+                </label>
+            </div>
+        </div>
+        @endif
         <div class="col-md-12">
             <label class="form-label">Notas</label>
             <textarea name="notes" class="form-control" rows="3">{{ old('notes', $party->notes) }}</textarea>

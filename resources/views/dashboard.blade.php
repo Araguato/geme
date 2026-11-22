@@ -25,6 +25,9 @@
     $sales[] = ['route' => route('products.search'), 'label' => 'Buscar productos', 'icon' => 'bi-upc-scan'];
     $sales[] = ['route' => route('catalog.index'), 'label' => 'Catálogo público', 'icon' => 'bi-shop', 'target' => '_blank'];
     $sales[] = ['route' => route('help.index'), 'label' => 'Centro de ayuda', 'icon' => 'bi-question-circle'];
+    if ($user->hasAnyRole(['admin', 'supervisor'])) {
+        $sales[] = ['route' => route('marketing.index'), 'label' => 'Marketing y clientes', 'icon' => 'bi-megaphone'];
+    }
     $moduleGroups['Ventas y operaciones'] = $sales;
     if ($canManageInventory) {
         $moduleGroups['Inventario'] = [

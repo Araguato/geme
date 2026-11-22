@@ -21,11 +21,36 @@ class Party extends Model
         'address',
         'notes',
         'is_active',
+        'marketing_opt_in',
+        'marketing_opt_in_at',
+        'marketing_opt_in_source',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'marketing_opt_in' => 'boolean',
+        'marketing_opt_in_at' => 'datetime',
     ];
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'customer_party_id');
+    }
+
+    public function scopeCustomers($query)
+    {
+        return $query->where('type', 'customer');
+    }
+
+    /** Registra o retira el consentimiento de marketing, con fecha y origen. */
+    public function setMarketingConsent(bool $optIn, string $source): void
+    {
+        $this->forceFill([
+            'marketing_opt_in' => $optIn,
+            'marketing_opt_in_at' => $optIn ? now() : null,
+            'marketing_opt_in_source' => $optIn ? $source : null,
+        ])->save();
+    }
 
     public function supplier()
     {

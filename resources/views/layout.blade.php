@@ -463,6 +463,13 @@
                             </li>
                         @endif
 
+                        {{-- Marketing: admin y supervisor --}}
+                        @if($isAdmin || $isSupervisor)
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ route('marketing.index') }}"><i class="bi bi-megaphone"></i> Marketing</a>
+                            </li>
+                        @endif
+
                         {{-- Menú Ventas: admin, cajero, vendedor, supervisor --}}
                         @if($isAdmin || $isCajero || $isVendedor || $isSupervisor)
                             <li class="nav-item dropdown">

@@ -41,6 +41,7 @@ use App\Http\Controllers\AccountingDashboardController;
 use App\Http\Controllers\InventoryDashboardController;
 use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\AiSettingsController;
+use App\Http\Controllers\MarketingController;
 use Illuminate\Support\Facades\Route;
 
 // Grupos de roles (misma matriz que el menú en resources/views/layout.blade.php)
@@ -212,6 +213,14 @@ Route::middleware(['auth', $finance])->group(function () {
     Route::get('finances/categories/{category}/edit', [ExpenseCategoryController::class, 'edit'])->name('finances.categories.edit');
     Route::put('finances/categories/{category}', [ExpenseCategoryController::class, 'update'])->name('finances.categories.update');
     Route::delete('finances/categories/{category}', [ExpenseCategoryController::class, 'destroy'])->name('finances.categories.destroy');
+});
+
+// Marketing / CRM (admin y supervisor): datos personales de clientes
+Route::middleware(['auth', $management])->group(function () {
+    Route::get('marketing', [MarketingController::class, 'index'])->name('marketing.index');
+    Route::get('marketing/exportar', [MarketingController::class, 'export'])->name('marketing.export');
+    Route::get('marketing/clientes/{party}', [MarketingController::class, 'show'])->name('marketing.customers.show');
+    Route::post('marketing/clientes/{party}/consentimiento', [MarketingController::class, 'consent'])->name('marketing.customers.consent');
 });
 
 // Nómina (admin y supervisor)

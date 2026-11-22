@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DeliveryInfo;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Party;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +91,8 @@ class PublicOrderController extends Controller
         }
 
         DB::transaction(function () use ($request, $cart) {
+            $customerParty = $this->customerPartyFor($request);
+
             $delivery = DeliveryInfo::create([
                 'address' => $request->address,
                 'city' => $request->city,
@@ -114,6 +117,7 @@ class PublicOrderController extends Controller
                 'customer_name' => $request->customer_name,
                 'customer_email' => $request->customer_email,
                 'customer_phone' => $request->customer_phone,
+                'customer_party_id' => $customerParty?->id,
                 'type' => 'online',
                 'status' => 'pending',
                 'payment_status' => 'pending',
@@ -150,5 +154,39 @@ class PublicOrderController extends Controller
     public function success()
     {
         return view('public_order.success');
+    }
+
+    /**
+     * Ficha de cliente del pedido en línea: se busca por el correo de la cuenta (o el del
+     * pedido) y se crea si no existe, para que el pedido cuente en Marketing. Si el cliente
+     * aceptó promociones al registrarse, ese consentimiento se copia a la ficha.
+     */
+    protected function customerPartyFor(Request $request): ?Party
+    {
+        $user = $request->user();
+        $email = strtolower(trim((string) ($user?->email ?: $request->customer_email)));
+        if ($email === '') {
+            return null;
+        }
+
+        $party = Party::customers()->whereRaw('LOWER(email) = ?', [$email])->first();
+        if (!$party) {
+            $party = Party::create([
+                'type' => 'customer',
+                'name' => $request->customer_name,
+                'email' => $email,
+                'phone' => $request->customer_phone,
+                'notes' => 'Creado automáticamente desde la tienda en línea.',
+                'is_active' => true,
+            ]);
+        } elseif (!$party->phone && $request->customer_phone) {
+            $party->update(['phone' => $request->customer_phone]);
+        }
+
+        if ($user?->marketing_opt_in && !$party->marketing_opt_in) {
+            $party->setMarketingConsent(true, 'registro_web');
+        }
+
+        return $party;
     }
 }
