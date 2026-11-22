@@ -8,6 +8,7 @@
     <title>geme - Admin</title>
     <link rel="icon" type="image/jpeg" href="{{ asset('logo-quorisk.jpg') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/introjs.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     @php
@@ -311,12 +312,20 @@
                     @php($isVendedor = $user->hasRole('vendedor'))
                     @php($isAlmacenista = $user->hasRole('almacenista'))
                     @php($isDespachador = $user->hasRole('despachador'))
-                    @php($isStaff = $isAdmin || $isSupervisor || $isCajero || $isVendedor || $isAlmacenista || $isDespachador)
+                    @php($isContable = $user->hasRole('contable'))
+                    @php($isStaff = $user->isStaff())
+                    @php($canFinance = $isAdmin || $isSupervisor || $isContable)
+                    @php($canExpenses = $isAdmin || $isContable)
                     @php($financesEnabled = (bool) \App\Models\Setting::get('finances_enabled', 0))
 
                     @if($isStaff)
-                        {{-- Menú Finanzas: admin y supervisor --}}
-                        @if($financesEnabled && ($isAdmin || $isSupervisor))
+                        {{-- Inicio: pantalla de trabajo según el rol --}}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('home') }}"><i class="bi bi-house"></i> Inicio</a>
+                        </li>
+
+                        {{-- Menú Finanzas: admin, supervisor y contable --}}
+                        @if($canFinance)
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="financesDropdown" role="button"
                                    data-bs-toggle="dropdown" aria-expanded="false">
@@ -324,13 +333,23 @@
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="financesDropdown">
                                     <li>
-                                        <a class="dropdown-item" href="{{ route('finances.index') }}">{{ __('ui.nav.finances') }}</a>
+                                        <a class="dropdown-item" href="{{ route('accounting.dashboard') }}"><i class="bi bi-calculator"></i> Panel financiero</a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('reports.sales') }}"><i class="bi bi-bar-chart"></i> Ventas por vendedor / categoría</a>
+                                    </li>
+                                    @if($financesEnabled && $canExpenses)
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('finances.index') }}">{{ __('ui.nav.finances') }}</a>
+                                        </li>
+                                    @endif
                                     <li><hr class="dropdown-divider"></li>
                                     <li class="px-3 text-muted small">Finanzas</li>
-                                    <li>
-                                        <a class="dropdown-item" href="{{ route('settings.bcv.edit') }}">{{ __('ui.nav.bcv_rate') }}</a>
-                                    </li>
+                                    @if($canExpenses)
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('settings.bcv.edit') }}">{{ __('ui.nav.bcv_rate') }}</a>
+                                        </li>
+                                    @endif
                                     <li>
                                         <a class="dropdown-item" href="{{ route('supplier-invoices.index') }}">{{ __('ui.layout.accounts_payable') }}</a>
                                     </li>
@@ -342,9 +361,11 @@
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li class="px-3 text-muted small">Reportes finanzas</li>
-                                    <li>
-                                        <a class="dropdown-item" href="{{ route('finances.reports.monthly') }}">{{ __('ui.nav.finances_report_monthly') }}</a>
-                                    </li>
+                                    @if($financesEnabled && $canExpenses)
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('finances.reports.monthly') }}">{{ __('ui.nav.finances_report_monthly') }}</a>
+                                        </li>
+                                    @endif
                                     <li>
                                         <a class="dropdown-item" href="{{ route('fiscal-ledger.index') }}">Libro Electrónico SENIAT</a>
                                     </li>
@@ -382,6 +403,9 @@
                                         <a class="dropdown-item" href="{{ route('products.search') }}">Buscar productos</a>
                                     </li>
                                     @if($isAdmin || $isAlmacenista || $isSupervisor)
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('inventory.dashboard') }}"><i class="bi bi-speedometer2"></i> Panel de almacén</a>
+                                        </li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li class="px-3 text-muted small">Catálogos</li>
                                         <li>

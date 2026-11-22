@@ -14,8 +14,8 @@ class ExampleTest extends TestCase
      */
     public function test_the_application_returns_a_successful_response(): void
     {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
+        // Sin sesión, la raíz lleva al login; con sesión, a la pantalla de su rol
+        $this->get('/')->assertRedirect('/login');
+        $this->get('/login')->assertOk();
     }
 }

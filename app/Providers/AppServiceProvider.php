@@ -38,6 +38,10 @@ class AppServiceProvider extends ServiceProvider
         $publicStoragePath = public_path('storage');
         $expectedTarget = storage_path('app/public');
 
+        // Sin la carpeta de destino, storage:link falla (en Windows "mklink" imprime
+        // "El sistema no puede encontrar la ruta especificada") y se reintenta en cada petición.
+        File::ensureDirectoryExists($expectedTarget);
+
         $expectedRealPath = realpath($expectedTarget) ?: $expectedTarget;
 
         $exists = File::exists($publicStoragePath);

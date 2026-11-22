@@ -67,13 +67,55 @@ class User extends Authenticatable
         return $this->hasMany(Order::class, 'customer_id');
     }
 
+    /** Roles del personal interno (todo lo que no es cliente). */
+    public const STAFF_ROLES = ['admin', 'supervisor', 'contable', 'cajero', 'vendedor', 'almacenista', 'despachador'];
+
+    /** Nombres de rol cargados una sola vez por petición. */
+    protected ?array $roleNamesCache = null;
+
+    public function roleNames(): array
+    {
+        if ($this->roleNamesCache === null) {
+            $this->roleNamesCache = $this->roles()->pluck('name')->all();
+        }
+
+        return $this->roleNamesCache;
+    }
+
+    public function flushRoleCache(): void
+    {
+        $this->roleNamesCache = null;
+    }
+
     public function hasRole(string $role): bool
     {
-        return $this->roles()->where('name', $role)->exists();
+        return in_array($role, $this->roleNames(), true);
     }
 
     public function hasAnyRole(array $roles): bool
     {
-        return $this->roles()->whereIn('name', $roles)->exists();
+        return count(array_intersect($roles, $this->roleNames())) > 0;
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->hasAnyRole(self::STAFF_ROLES);
+    }
+
+    /**
+     * Pantalla de inicio según el rol. Con varios roles gana el de más alcance:
+     * admin/supervisor → panel general, contable → panel financiero,
+     * cajero/vendedor → TPV, almacenista → panel de almacén.
+     */
+    public function homeRouteName(): string
+    {
+        return match (true) {
+            $this->hasAnyRole(['admin', 'supervisor']) => 'dashboard',
+            $this->hasRole('contable') => 'accounting.dashboard',
+            $this->hasAnyRole(['cajero', 'vendedor']) => 'pos.index',
+            $this->hasRole('almacenista') => 'inventory.dashboard',
+            $this->hasRole('despachador') => 'dashboard',
+            default => 'public.order.index',
+        };
     }
 }

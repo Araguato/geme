@@ -37,13 +37,17 @@ use App\Http\Controllers\PublicOrderController;
 use App\Http\Controllers\CustomerRegistrationController;
 use App\Http\Controllers\LoginLogController;
 use App\Http\Controllers\SalesLocationController;
+use App\Http\Controllers\AccountingDashboardController;
+use App\Http\Controllers\InventoryDashboardController;
+use App\Http\Controllers\SalesReportController;
 use Illuminate\Support\Facades\Route;
 
 // Grupos de roles (misma matriz que el menú en resources/views/layout.blade.php)
-$staff = 'role:admin|supervisor|cajero|vendedor|almacenista|despachador';
+$staff = 'role:admin|supervisor|contable|cajero|vendedor|almacenista|despachador';
 $sales = 'role:admin|supervisor|cajero|vendedor';
 $inventory = 'role:admin|supervisor|almacenista';
 $management = 'role:admin|supervisor';
+$finance = 'role:admin|supervisor|contable';
 $adminOnly = 'role:admin';
 
 Route::get('/', function () {
@@ -98,8 +102,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Redirección raíz autenticada
-    Route::redirect('/', '/categories');
+    // Inicio según el rol (TPV, almacén, finanzas o panel general)
+    Route::get('/', fn () => redirect()->route(auth()->user()->homeRouteName()));
+    Route::get('inicio', fn () => redirect()->route(auth()->user()->homeRouteName()))->name('home');
 
     // Reporte de errores / problemas
     Route::get('error-report', [ErrorReportController::class, 'create'])->name('error-report.create');
@@ -147,6 +152,9 @@ Route::middleware(['auth', $inventory])->group(function () {
     Route::get('products/{product}/recipe', [RecipeController::class, 'edit'])->name('products.recipe.edit');
     Route::put('products/{product}/recipe', [RecipeController::class, 'update'])->name('products.recipe.update');
 
+    // Panel de inicio del almacenista
+    Route::get('almacen', [InventoryDashboardController::class, 'index'])->name('inventory.dashboard');
+
     // Inventario: stock actual, ajustes y movimientos (kardex)
     Route::get('stock', [StockController::class, 'index'])->name('stock.index');
     Route::get('stock/adjust', [StockController::class, 'adjustForm'])->name('stock.adjust.form');
@@ -158,8 +166,14 @@ Route::middleware(['auth', $inventory])->group(function () {
     Route::resource('locations', LocationController::class)->except(['show']);
 });
 
-// Gestión: cuentas por pagar, finanzas, SENIAT y nómina
-Route::middleware(['auth', $management])->group(function () {
+// Finanzas: cuentas por pagar, gastos, SENIAT e informes (admin, supervisor y contable)
+Route::middleware(['auth', $finance])->group(function () {
+    Route::get('contabilidad', [AccountingDashboardController::class, 'index'])->name('accounting.dashboard');
+
+    // Informe de ventas por vendedor / categoría
+    Route::get('reports/sales', [SalesReportController::class, 'index'])->name('reports.sales');
+    Route::get('reports/sales/export', [SalesReportController::class, 'export'])->name('reports.sales.export');
+
     Route::resource('supplier-invoices', SupplierInvoiceController::class)->except(['destroy']);
     Route::post('supplier-invoices/{supplierInvoice}/payments', [SupplierPaymentController::class, 'store'])
         ->name('supplier-invoices.payments.store');
@@ -169,12 +183,6 @@ Route::middleware(['auth', $management])->group(function () {
         ->name('recurring-supplier-invoices.generate');
 
     Route::get('supplier-ap/dashboard', [AccountsPayableDashboardController::class, 'index'])->name('supplier-ap.dashboard');
-
-    Route::resource('payroll-periods', PayrollPeriodController::class)->except(['show', 'destroy']);
-    Route::resource('payroll-runs', PayrollRunController::class)->except(['show', 'destroy']);
-    Route::post('payroll-runs/{payroll_run}/generate', [PayrollRunController::class, 'generate'])->name('payroll-runs.generate');
-    Route::post('payroll-runs/{payroll_run}/recalculate', [PayrollRunController::class, 'recalculate'])->name('payroll-runs.recalculate');
-    Route::resource('payroll-entries', PayrollEntryController::class)->only(['index', 'show', 'edit', 'update']);
 
     // Tasa BCV
     Route::get('settings/bcv', [SettingController::class, 'editBcv'])->name('settings.bcv.edit');
@@ -203,6 +211,16 @@ Route::middleware(['auth', $management])->group(function () {
     Route::get('finances/categories/{category}/edit', [ExpenseCategoryController::class, 'edit'])->name('finances.categories.edit');
     Route::put('finances/categories/{category}', [ExpenseCategoryController::class, 'update'])->name('finances.categories.update');
     Route::delete('finances/categories/{category}', [ExpenseCategoryController::class, 'destroy'])->name('finances.categories.destroy');
+});
+
+// Nómina (admin y supervisor)
+Route::middleware(['auth', $management])->group(function () {
+    Route::resource('payroll-periods', PayrollPeriodController::class)->except(['show', 'destroy']);
+    Route::resource('payroll-runs', PayrollRunController::class)->except(['show', 'destroy']);
+    Route::post('payroll-runs/{payroll_run}/generate', [PayrollRunController::class, 'generate'])->name('payroll-runs.generate');
+    Route::post('payroll-runs/{payroll_run}/recalculate', [PayrollRunController::class, 'recalculate'])->name('payroll-runs.recalculate');
+    Route::resource('payroll-entries', PayrollEntryController::class)->only(['index', 'show', 'edit', 'update']);
+
 });
 
 // Administración (solo admin)

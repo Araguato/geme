@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\SupplierInvoice;
 use App\Services\FiscalLedgerService;
+use App\Services\SalesReportService;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -35,15 +36,34 @@ class DashboardController extends Controller
 
         $productsCount = Product::where('is_active', true)->count();
         $lowStock = Product::where('is_active', true)
-            ->whereRaw('(stock_quantity IS NOT NULL AND stock_quantity <= reorder_point)')
-            ->orWhere(function ($q) {
-                $q->where('is_active', true)
-                    ->whereColumn('stock_quantity', '<=', 'reorder_point');
-            })
+            ->where('reorder_point', '>', 0)
+            ->whereColumn('stock_quantity', '<=', 'reorder_point')
             ->count();
 
-        $pendingInvoices = SupplierInvoice::where('status', 'pending')->count();
-        $pendingInvoiceAmount = SupplierInvoice::where('status', 'pending')->sum('total_amount');
+        // Estados reales de las facturas de proveedor: pendiente / parcial / pagada
+        $openInvoices = SupplierInvoice::with('payments')->whereIn('status', ['pendiente', 'parcial'])->get();
+        $pendingInvoices = $openInvoices->count();
+        $pendingInvoiceAmount = $openInvoices->sum->remaining_usd;
+
+        // Estadísticas avanzadas (admin / supervisor): comparación con el mes anterior
+        // hasta el mismo día, margen y ranking por vendedor, categoría y producto.
+        $monthTotals = null;
+        $salesChange = null;
+        $topSellers = $topCategories = $topProducts = collect();
+        if (auth()->user()->hasAnyRole(['admin', 'supervisor'])) {
+            $monthReport = SalesReportService::forRange(now()->startOfMonth(), now());
+            $monthTotals = $monthReport->totals();
+            $prevTotals = SalesReportService::forRange(
+                now()->subMonthNoOverflow()->startOfMonth(),
+                now()->subMonthNoOverflow()
+            )->totals();
+            $salesChange = $prevTotals['net'] > 0
+                ? round(($monthTotals['net'] - $prevTotals['net']) / $prevTotals['net'] * 100, 1)
+                : null;
+            $topSellers = $monthReport->rows('seller', 5);
+            $topCategories = $monthReport->rows('category', 5);
+            $topProducts = $monthReport->rows('product', 5);
+        }
 
         $activeShift = CashShift::activeFor(auth()->user());
 
@@ -84,7 +104,12 @@ class DashboardController extends Controller
             'recentSales',
             'lowStockProducts',
             'chartLabels',
-            'chartValues'
+            'chartValues',
+            'monthTotals',
+            'salesChange',
+            'topSellers',
+            'topCategories',
+            'topProducts'
         ));
     }
 }

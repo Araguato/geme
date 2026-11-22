@@ -51,3 +51,6 @@ wawi_db-*.sql
 license_private.pem
 license_public.pem
 serial_carol.txt
+
+# Logs locales (pueden contener datos sensibles)
+/storage/logs/*.log

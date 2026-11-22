@@ -13,6 +13,7 @@
         // Misma matriz de roles que routes/web.php
         $canSell = $user && $user->hasAnyRole(['admin', 'supervisor', 'cajero', 'vendedor']);
         $canManageInventory = $user && $user->hasAnyRole(['admin', 'supervisor', 'almacenista']);
+        $canSeeFinance = $user && $user->hasAnyRole(['admin', 'supervisor', 'contable']);
         $storedPrimary = \App\Models\Setting::get('theme_primary_color', '#0f172a');
         $storedAccent = \App\Models\Setting::get('theme_accent_color', '#22c55e');
         $themeVariant = \App\Models\Setting::get('theme_variant', 'classic');
@@ -50,6 +51,17 @@
                 ['id' => 'dashboardWarehouses', 'route' => route('warehouses.index'), 'label' => 'Depósitos', 'icon' => 'bi-building'],
                 ['id' => 'dashboardLocations', 'route' => route('locations.index'), 'label' => 'Ubicaciones', 'icon' => 'bi-geo-alt'],
             ];
+        }
+        if ($canSeeFinance) {
+            $moduleGroups['Finanzas e informes'] = [
+                ['id' => 'dashboardSalesReport', 'route' => route('reports.sales'), 'label' => 'Ventas por vendedor / categoría', 'icon' => 'bi-bar-chart'],
+                ['id' => 'dashboardAccounting', 'route' => route('accounting.dashboard'), 'label' => 'Panel financiero', 'icon' => 'bi-calculator'],
+                ['id' => 'dashboardFiscal', 'route' => route('fiscal-ledger.index'), 'label' => 'Libro SENIAT', 'icon' => 'bi-journal-text'],
+                ['id' => 'dashboardPayables', 'route' => route('supplier-ap.dashboard'), 'label' => 'Cuentas por pagar', 'icon' => 'bi-cash-coin'],
+            ];
+        }
+        if ($canManageInventory) {
+            $moduleGroups['Inventario'][] = ['id' => 'dashboardWarehousePanel', 'route' => route('inventory.dashboard'), 'label' => 'Panel de almacén', 'icon' => 'bi-speedometer2'];
         }
         if ($isAdmin) {
             $moduleGroups['Administración'] = [
@@ -142,16 +154,22 @@
                             <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Ventas del mes</h6>
                             <p class="text-2xl font-bold" style="color: {{ $cardText }};">$ {{ number_format($salesMonth, 2) }}</p>
                             <small style="color: {{ $mutedText }};">{{ $ordersMonth }} órdenes</small>
+                            @if($salesChange !== null)
+                                <small class="d-block {{ $salesChange >= 0 ? 'text-success' : 'text-danger' }}">
+                                    <i class="bi {{ $salesChange >= 0 ? 'bi-arrow-up' : 'bi-arrow-down' }}"></i>
+                                    {{ number_format(abs($salesChange), 1) }} % vs. mes anterior
+                                </small>
+                            @endif
                         </div>
                         <div class="rounded shadow-sm p-4" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
-                            <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Productos activos</h6>
-                            <p class="text-2xl font-bold" style="color: {{ $cardText }};">{{ $productsCount }}</p>
-                            <small style="color: {{ $mutedText }};">{{ $lowStock }} con stock bajo</small>
+                            <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Margen bruto del mes</h6>
+                            <p class="text-2xl font-bold {{ ($monthTotals['margin'] ?? 0) < 0 ? 'text-danger' : '' }}" style="color: {{ $cardText }};">$ {{ number_format($monthTotals['margin'] ?? 0, 2) }}</p>
+                            <small style="color: {{ $mutedText }};">{{ number_format($monthTotals['margin_pct'] ?? 0, 1) }} % · {{ $productsCount }} productos, {{ $lowStock }} con stock bajo</small>
                         </div>
                         <div class="rounded shadow-sm p-4" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
                             <h6 class="text-sm mb-1" style="color: {{ $mutedText }};">Facturas por pagar</h6>
                             <p class="text-2xl font-bold" style="color: {{ $cardText }};">{{ $pendingInvoices }}</p>
-                            <small style="color: {{ $mutedText }};">$ {{ number_format($pendingInvoiceAmount, 2) }}</small>
+                            <small style="color: {{ $mutedText }};">$ {{ number_format($pendingInvoiceAmount, 2) }} pendientes</small>
                         </div>
                     </div>
 
@@ -175,6 +193,46 @@
                                 @endforelse
                             </ul>
                         </div>
+                    </div>
+
+                    {{-- Ranking del mes --}}
+                    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                        <h3 class="text-lg font-semibold mb-0" style="color: {{ $cardText }};">Este mes</h3>
+                        <a href="{{ route('reports.sales') }}" class="btn btn-sm btn-outline-accent" style="border-color: {{ $themeAccent }}; color: {{ $themeAccent }};">
+                            <i class="bi bi-bar-chart"></i> Informe de ventas completo
+                        </a>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="dashboardRanking">
+                        @foreach([
+                            ['title' => 'Por vendedor', 'rows' => $topSellers, 'group' => 'seller'],
+                            ['title' => 'Por categoría', 'rows' => $topCategories, 'group' => 'category'],
+                            ['title' => 'Productos más vendidos', 'rows' => $topProducts, 'group' => 'product'],
+                        ] as $block)
+                            <div class="rounded shadow-sm" style="background: {{ $cardBg }}; border: 1px solid {{ $borderColor }};">
+                                <div class="px-4 py-3 font-bold border-b d-flex justify-content-between" style="color: {{ $cardText }}; border-color: {{ $borderColor }};">
+                                    <span>{{ $block['title'] }}</span>
+                                    <a href="{{ route('reports.sales', ['group' => $block['group']]) }}" class="small fw-normal" style="color: {{ $themeAccent }};">Ver todo</a>
+                                </div>
+                                <ul class="divide-y mb-0 ps-0" style="border-color: {{ $borderColor }};">
+                                    @forelse($block['rows'] as $r)
+                                        <li class="px-4 py-2" style="color: {{ $cardText }}; list-style: none;">
+                                            <div class="flex justify-between items-center">
+                                                <span class="small">{{ Str::limit($r['label'], 28) }}</span>
+                                                <span class="small fw-semibold">$ {{ number_format($r['net'], 2) }}</span>
+                                            </div>
+                                            <div class="progress mt-1" style="height: 4px; background: {{ $borderColor }};">
+                                                <div class="progress-bar" style="width: {{ $r['share'] }}%; background: {{ $themeAccent }};"></div>
+                                            </div>
+                                            <div class="small" style="color: {{ $mutedText }}; font-size: .75rem;">
+                                                {{ number_format($r['share'], 1) }} % de la venta · margen {{ number_format($r['margin_pct'], 1) }} %
+                                            </div>
+                                        </li>
+                                    @empty
+                                        <li class="px-4 py-2 small" style="color: {{ $mutedText }}; list-style: none;">Sin ventas este mes.</li>
+                                    @endforelse
+                                </ul>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
             @endif

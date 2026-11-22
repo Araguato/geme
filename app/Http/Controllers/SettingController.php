@@ -17,9 +17,18 @@ class SettingController extends Controller
         }
     }
 
+    /** La tasa BCV la mantiene también el contable. */
+    protected function authorizeBcv(): void
+    {
+        $user = auth()->user();
+        if (!$user || !$user->hasAnyRole(['admin', 'contable'])) {
+            abort(403);
+        }
+    }
+
     public function editBcv()
     {
-        $this->authorizeAdmin();
+        $this->authorizeBcv();
 
         $bcvRate = Setting::get('bcv_rate');
 
@@ -35,7 +44,7 @@ class SettingController extends Controller
 
     public function updateBcv(Request $request)
     {
-        $this->authorizeAdmin();
+        $this->authorizeBcv();
 
         $data = $request->validate([
             'bcv_rate' => 'required|numeric|min:0.0001',

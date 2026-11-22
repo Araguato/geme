@@ -63,6 +63,7 @@ class UserController extends Controller
         ]);
 
         $user->roles()->sync($data['roles'] ?? []);
+        $user->flushRoleCache();
 
         return redirect()->route('users.index');
     }
@@ -108,6 +109,7 @@ class UserController extends Controller
         $user->save();
 
         $user->roles()->sync($data['roles'] ?? []);
+        $user->flushRoleCache();
 
         return redirect()->route('users.index');
     }

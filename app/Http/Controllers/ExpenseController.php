@@ -13,7 +13,8 @@ class ExpenseController extends Controller
     private function authorizeFinances(): void
     {
         $user = auth()->user();
-        if (!$user || !method_exists($user, 'hasRole') || !$user->hasRole('admin')) {
+        // Gastos: admin y contable
+        if (!$user || !$user->hasAnyRole(['admin', 'contable'])) {
             abort(403);
         }
 

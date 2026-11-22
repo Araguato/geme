@@ -32,20 +32,15 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $user = \Illuminate\Support\Facades\Auth::user();
+        $user = Auth::user();
 
-        if ($user && method_exists($user, 'hasRole') && $user->hasRole('admin')) {
+        // Cada rol entra a su pantalla de trabajo (TPV, almacén, finanzas, panel).
+        // El admin siempre va al panel; el resto vuelve a la página que intentaba abrir.
+        if ($user->hasRole('admin')) {
             $request->session()->forget('url.intended');
-            return redirect()->route('dashboard');
         }
 
-        // Clientes (sin rol interno) van a la tienda en línea, no al panel
-        $staffRoles = ['supervisor', 'cajero', 'vendedor', 'almacenista', 'despachador'];
-        if (!$user || !$user->hasAnyRole($staffRoles)) {
-            return redirect()->intended(route('public.order.index', absolute: false));
-        }
-
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(route($user->homeRouteName(), absolute: false));
     }
 
     /**
