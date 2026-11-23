@@ -25,6 +25,8 @@ class OrderVoidController extends Controller
         }
 
         return redirect()->route('pos.ticket', $order)
-            ->with('success', "Venta anulada. Nota de crédito {$note->number} registrada.");
+            ->with('success', $note
+                ? "Venta anulada. Nota de crédito {$note->number} registrada."
+                : 'Nota de entrega anulada. Se devolvió el inventario y el cobro.');
     }
 }

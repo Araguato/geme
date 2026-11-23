@@ -60,7 +60,7 @@ class FiscalPayloadBuilder
         return [
             'document_type' => $documentType,
             'order_number' => $order->order_number,
-            'issued_at' => optional($order->created_at)->toIso8601String(), // fecha y hora
+            'issued_at' => optional($order->invoiced_at ?? $order->created_at)->toIso8601String(), // fecha y hora
             'issuer' => [
                 'tax_id' => Setting::get('company_tax_id'),
                 'name' => Setting::get('company_name'),

@@ -5,7 +5,7 @@
         <div class="col-md-8 col-lg-6">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Ticket / Factura</span>
+                    <span>{{ $order->is_delivery_note ? 'Nota de entrega' : 'Ticket / Factura' }}</span>
                     <div>
                         <a href="{{ route('pos.index') }}" class="btn btn-sm btn-outline-primary">Nueva venta</a>
                         <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">Imprimir</button>
@@ -30,6 +30,12 @@
                                 <div class="small">Nota de crédito: {{ $creditNote->number }}</div>
                             @endif
                         </div>
+                    @endif
+                    @if($order->is_delivery_note)
+                        <div class="fw-bold">NOTA DE ENTREGA N° {{ $order->delivery_note_number }}</div>
+                        <div class="small text-danger">Documento sin validez fiscal · Pendiente de facturar</div>
+                    @elseif($order->delivery_note_number)
+                        <div class="small text-muted">Facturada el {{ $order->invoiced_at?->format('d/m/Y H:i') }} (antes nota de entrega {{ $order->delivery_note_number }})</div>
                     @endif
                     <p class="mb-1"><strong>{{ $order->order_number }}</strong></p>
                     <p class="mb-1 small text-muted">{{ $order->created_at->format('d/m/Y H:i') }}</p>
@@ -78,6 +84,15 @@
                         <div class="border-top mt-2 pt-2 small text-muted">Factura fiscal pendiente de emisión.</div>
                     @endif
                 </div>
+                @if($order->isPendingDeliveryNote() && auth()->user()?->hasAnyRole(['admin', 'supervisor', 'contable']))
+                    <div class="card-footer">
+                        <form method="POST" action="{{ route('delivery-notes.invoice', $order) }}"
+                              onsubmit="return confirm('¿Facturar esta nota de entrega? Entrará al libro de ventas con la fecha de hoy.');">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-primary w-100">Convertir en factura</button>
+                        </form>
+                    </div>
+                @endif
                 @if($order->status === 'completed' && auth()->user()?->hasAnyRole(['admin', 'supervisor']))
                     <div class="card-footer">
                         <form method="POST" action="{{ route('orders.void', $order) }}"

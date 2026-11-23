@@ -101,7 +101,7 @@ class FiscalLedgerService
             $taxRate = round(($tax / $taxable) * 100, 2);
         }
 
-        $documentDate = optional($order->created_at)->toDateString();
+        $documentDate = optional($order->invoiced_at ?? $order->created_at)->toDateString();
         $currency = Arr::get($metadata, 'currency', 'USD');
         $exchangeRate = Arr::get($metadata, 'exchange_rate', (float) Setting::get('bcv_rate', 0));
 

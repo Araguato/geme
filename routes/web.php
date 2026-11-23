@@ -44,6 +44,7 @@ use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\AiSettingsController;
 use App\Http\Controllers\MarketingController;
 use App\Http\Controllers\OrderVoidController;
+use App\Http\Controllers\DeliveryNoteController;
 use Illuminate\Support\Facades\Route;
 
 // Grupos de roles (misma matriz que el menú en resources/views/layout.blade.php)
@@ -144,6 +145,12 @@ Route::middleware(['auth', $sales])->group(function () {
 // Anulación de ventas (nota de crédito): solo gerencia
 Route::middleware(['auth', $management])->group(function () {
     Route::post('pos/ticket/{order}/anular', [OrderVoidController::class, 'store'])->name('orders.void');
+});
+
+// Notas de entrega: listado y conversión a factura (gerencia y contabilidad)
+Route::middleware(['auth', $finance])->group(function () {
+    Route::get('notas-entrega', [DeliveryNoteController::class, 'index'])->name('delivery-notes.index');
+    Route::post('notas-entrega/{order}/facturar', [DeliveryNoteController::class, 'invoice'])->name('delivery-notes.invoice');
 });
 
 // Inventario: catálogo, stock y depósitos

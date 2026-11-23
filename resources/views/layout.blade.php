@@ -484,6 +484,11 @@
                                     <li>
                                         <a class="dropdown-item" href="{{ route('pos.index') }}">TPV / Punto de venta</a>
                                     </li>
+                                    @if($isAdmin || $isSupervisor || $isContable)
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('delivery-notes.index') }}">Notas de entrega</a>
+                                        </li>
+                                    @endif
                                 </ul>
                             </li>
                         @endif

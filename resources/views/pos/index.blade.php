@@ -268,6 +268,13 @@
                 <div class="card-footer" id="posPayment">
                     <div class="row g-3">
                         <div class="col-md-4">
+                            <label class="form-label">Documento</label>
+                            <select name="document_kind" class="form-select" id="document-kind">
+                                <option value="factura" @selected(old('document_kind', 'factura') === 'factura')>Factura</option>
+                                <option value="nota_entrega" @selected(old('document_kind') === 'nota_entrega')>Nota de entrega (sin factura)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label">Método de pago</label>
                             <select name="payment[method]" class="form-select" id="payment-method" required>
                                 <option value="cash">Efectivo / Dólares físicos</option>

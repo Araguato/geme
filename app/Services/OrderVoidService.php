@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
  */
 class OrderVoidService
 {
-    public static function void(Order $order, User $user, string $reason, ?string $ip = null, ?string $userAgent = null): CreditNote
+    public static function void(Order $order, User $user, string $reason, ?string $ip = null, ?string $userAgent = null): ?CreditNote
     {
         $reason = trim($reason);
 
@@ -36,6 +36,7 @@ class OrderVoidService
             }
 
             $order->load(['items', 'payments']);
+            $isDeliveryNote = $order->isPendingDeliveryNote();
             $fiscal = FiscalDocument::where('order_id', $order->id)->where('document_type', 'FACTURA')->first();
 
             // Una factura ya emitida por una imprenta real solo se corrige con nota de crédito fiscal
@@ -62,31 +63,36 @@ class OrderVoidService
 
             $before = ['status' => $order->status, 'payment_status' => $order->payment_status, 'total' => (float) $order->total];
 
-            // Libro: asiento original (si faltara se crea) y nota de crédito que lo contrarresta
-            $original = FiscalLedgerService::recordSale($order);
+            // Una nota de entrega sin facturar no tiene asiento en el libro: no hay nada fiscal que contrarrestar
+            $note = null;
+            $original = null;
+            if (!$isDeliveryNote) {
+                // Libro: asiento original (si faltara se crea) y nota de crédito que lo contrarresta
+                $original = FiscalLedgerService::recordSale($order);
 
-            $affected = $fiscal?->invoice_number ?: ($order->external_invoice_number ?: $order->order_number);
+                $affected = $fiscal?->invoice_number ?: ($order->external_invoice_number ?: $order->order_number);
 
-            $note = CreditNote::create([
-                'number' => 'NC-' . now()->format('Ymd') . '-' . strtoupper(uniqid()),
-                'order_id' => $order->id,
-                'user_id' => $user->id,
-                'customer_name' => $order->customerParty?->name ?? $order->customer_name,
-                'amount' => (float) $order->total,
-                'reason' => $reason,
-                'status' => 'applied',
-                'affected_document_number' => $affected,
-            ]);
-
-            foreach ($order->items as $item) {
-                CreditNoteItem::create([
-                    'credit_note_id' => $note->id,
-                    'order_item_id' => $item->id,
-                    'name' => $item->name,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'total' => $item->total,
+                $note = CreditNote::create([
+                    'number' => 'NC-' . now()->format('Ymd') . '-' . strtoupper(uniqid()),
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'customer_name' => $order->customerParty?->name ?? $order->customer_name,
+                    'amount' => (float) $order->total,
+                    'reason' => $reason,
+                    'status' => 'applied',
+                    'affected_document_number' => $affected,
                 ]);
+
+                foreach ($order->items as $item) {
+                    CreditNoteItem::create([
+                        'credit_note_id' => $note->id,
+                        'order_item_id' => $item->id,
+                        'name' => $item->name,
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->unit_price,
+                        'total' => $item->total,
+                    ]);
+                }
             }
 
             InventoryService::restoreForOrder($order, $user->id);
@@ -97,7 +103,7 @@ class OrderVoidService
                     'cash_shift_id' => $refundShiftId,
                     'method' => $payment->method,
                     'amount' => -1 * (float) $payment->amount,
-                    'reference' => 'Anulación ' . $note->number,
+                    'reference' => 'Anulación ' . ($note?->number ?? $order->delivery_note_number),
                     'cashea_initial_percentage' => $payment->cashea_initial_percentage,
                     'cashea_financed_amount' => $payment->cashea_financed_amount !== null
                         ? -1 * (float) $payment->cashea_financed_amount
@@ -110,7 +116,9 @@ class OrderVoidService
                 $fiscal->update(['status' => 'cancelled', 'resolved_by' => $user->id]);
             }
 
-            FiscalLedgerService::recordCreditNote($note, $order, $original);
+            if ($note) {
+                FiscalLedgerService::recordCreditNote($note, $order, $original);
+            }
 
             $order->update([
                 'status' => 'cancelled',
@@ -122,12 +130,14 @@ class OrderVoidService
 
             AuditLog::create([
                 'user_id' => $user->id,
-                'action' => 'sale_voided',
+                'action' => $isDeliveryNote ? 'delivery_note_voided' : 'sale_voided',
                 'entity_type' => 'Order',
                 'entity_id' => $order->id,
-                'description' => "Anuló la venta {$order->order_number} (nota de crédito {$note->number}): {$reason}",
+                'description' => $isDeliveryNote
+                    ? "Anuló la nota de entrega {$order->delivery_note_number} (venta {$order->order_number}): {$reason}"
+                    : "Anuló la venta {$order->order_number} (nota de crédito {$note->number}): {$reason}",
                 'data_before' => $before,
-                'data_after' => ['status' => 'cancelled', 'payment_status' => 'refunded', 'credit_note' => $note->number],
+                'data_after' => ['status' => 'cancelled', 'payment_status' => 'refunded', 'credit_note' => $note?->number],
                 'ip_address' => $ip,
                 'user_agent' => $userAgent,
             ]);

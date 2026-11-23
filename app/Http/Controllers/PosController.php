@@ -80,6 +80,7 @@ class PosController extends Controller
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.warehouse_id' => 'nullable|exists:warehouses,id',
             'items.*.location_id' => 'nullable|exists:locations,id',
+            'document_kind' => 'nullable|in:factura,nota_entrega',
             'payment.method' => 'required|in:cash,card,transfer,pagomovil,punto,cashea,other',
             'payment.amount' => 'required|numeric|min:0',
             'payment.reference' => 'nullable|string|max:255',
@@ -87,6 +88,7 @@ class PosController extends Controller
         ]);
 
         $isCashea = $data['payment']['method'] === 'cashea';
+        $isDeliveryNote = ($data['document_kind'] ?? 'factura') === 'nota_entrega';
         $orderTotal = 0;
 
         $activeShift = CashShift::activeFor(Auth::user());
@@ -97,7 +99,7 @@ class PosController extends Controller
         $canChangePrice = $this->canChangePrice();
         $shopWarehouseId = $activeShift->salesLocation?->warehouse_id;
 
-        $order = DB::transaction(function () use ($data, $activeShift, $isCashea, $canChangePrice, $shopWarehouseId) {
+        $order = DB::transaction(function () use ($data, $activeShift, $isCashea, $isDeliveryNote, $canChangePrice, $shopWarehouseId) {
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'user_id' => Auth::id(),
@@ -113,6 +115,8 @@ class PosController extends Controller
                 'total' => 0,
                 'exchange_rate' => ExchangeRateService::getRateForDate(now()) ?: null,
                 'cash_shift_id' => $activeShift->id,
+                'is_delivery_note' => $isDeliveryNote,
+                'delivery_note_number' => $isDeliveryNote ? $this->generateDeliveryNoteNumber() : null,
             ]);
 
             $subtotal = 0;
@@ -188,6 +192,13 @@ class PosController extends Controller
             return $order;
         });
 
+        // Una nota de entrega no es documento fiscal: no entra al libro ni a la cola de
+        // emisión hasta que se convierta en factura (DeliveryNoteController).
+        if ($order->is_delivery_note) {
+            return redirect()->route('pos.index')
+                ->with('success', "Nota de entrega {$order->delivery_note_number} registrada. Queda pendiente de facturar.");
+        }
+
         FiscalLedgerService::recordSale($order);
         FiscalEmissionService::enqueue($order); // no hace nada si no hay medio fiscal configurado
 
@@ -209,6 +220,11 @@ class PosController extends Controller
         $user = Auth::user();
 
         return $user !== null && $user->hasAnyRole(['admin', 'supervisor']);
+    }
+
+    private function generateDeliveryNoteNumber(): string
+    {
+        return 'NE-' . now()->format('Ymd') . '-' . strtoupper(uniqid());
     }
 
     private function generateOrderNumber(): string

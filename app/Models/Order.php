@@ -34,12 +34,18 @@ class Order extends Model
         'voided_at',
         'voided_by',
         'void_reason',
+        'is_delivery_note',
+        'delivery_note_number',
+        'invoiced_at',
+        'invoiced_by',
     ];
 
     protected $casts = [
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
         'voided_at' => 'datetime',
+        'invoiced_at' => 'datetime',
+        'is_delivery_note' => 'boolean',
     ];
 
     public function fiscalDocument()
@@ -50,6 +56,17 @@ class Order extends Model
     public function voider()
     {
         return $this->belongsTo(User::class, 'voided_by');
+    }
+
+    public function invoicer()
+    {
+        return $this->belongsTo(User::class, 'invoiced_by');
+    }
+
+    /** Nota de entrega aún sin facturar. */
+    public function isPendingDeliveryNote(): bool
+    {
+        return $this->is_delivery_note && $this->status === 'completed';
     }
 
     public function isVoided(): bool
