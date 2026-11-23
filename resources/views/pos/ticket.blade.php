@@ -16,6 +16,21 @@
                     <p class="mb-1 small text-muted">{{ $order->salesLocation?->address ?? '' }}</p>
                     <p class="mb-1 small text-muted">Tel: {{ $order->salesLocation?->phone ?? '' }}</p>
                     <hr>
+                    @if($order->status === 'cancelled')
+                        <div class="alert alert-danger py-2 mb-2">
+                            <strong>VENTA ANULADA</strong>
+                            @if($order->voided_at)
+                                <div class="small">{{ $order->voided_at->format('d/m/Y H:i') }}@if($order->voider) · {{ $order->voider->name }}@endif</div>
+                            @endif
+                            @if($order->void_reason)
+                                <div class="small">Motivo: {{ $order->void_reason }}</div>
+                            @endif
+                            @php($creditNote = $order->creditNotes()->latest('id')->first())
+                            @if($creditNote)
+                                <div class="small">Nota de crédito: {{ $creditNote->number }}</div>
+                            @endif
+                        </div>
+                    @endif
                     <p class="mb-1"><strong>{{ $order->order_number }}</strong></p>
                     <p class="mb-1 small text-muted">{{ $order->created_at->format('d/m/Y H:i') }}</p>
                     <p class="mb-1 small text-muted">Cajero: {{ $order->user?->name ?? 'N/A' }}</p>
@@ -63,13 +78,27 @@
                         <div class="border-top mt-2 pt-2 small text-muted">Factura fiscal pendiente de emisión.</div>
                     @endif
                 </div>
+                @if($order->status === 'completed' && auth()->user()?->hasAnyRole(['admin', 'supervisor']))
+                    <div class="card-footer">
+                        <form method="POST" action="{{ route('orders.void', $order) }}"
+                              onsubmit="return confirm('¿Anular esta venta? Se devolverá el inventario y se emitirá una nota de crédito. No se puede deshacer.');">
+                            @csrf
+                            <label class="form-label small mb-1" for="void-reason">Anular venta (nota de crédito)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="void-reason" name="reason" class="form-control" maxlength="255" minlength="5" required placeholder="Motivo de la anulación">
+                                <button type="submit" class="btn btn-outline-danger">Anular</button>
+                            </div>
+                            @error('reason')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        </form>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
 
     <style>
         @media print {
-            .btn, .card-header { display: none !important; }
+            .btn, .card-header, .card-footer { display: none !important; }
             .card { border: none !important; }
         }
     </style>

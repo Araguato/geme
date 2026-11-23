@@ -31,16 +31,30 @@ class Order extends Model
         'delivery_info_id',
         'cash_shift_id',
         'sales_location_id',
+        'voided_at',
+        'voided_by',
+        'void_reason',
     ];
 
     protected $casts = [
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
+        'voided_at' => 'datetime',
     ];
 
     public function fiscalDocument()
     {
         return $this->hasOne(FiscalDocument::class)->where('document_type', 'FACTURA');
+    }
+
+    public function voider()
+    {
+        return $this->belongsTo(User::class, 'voided_by');
+    }
+
+    public function isVoided(): bool
+    {
+        return $this->status === 'cancelled' && $this->voided_at !== null;
     }
 
     public function customerParty()

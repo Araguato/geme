@@ -17,6 +17,7 @@ class CreditNote extends Model
         'amount',
         'reason',
         'status',
+        'affected_document_number',
     ];
 
     public function order()

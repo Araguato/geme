@@ -157,6 +157,54 @@ class FiscalLedgerService
         return $entry;
     }
 
+    /**
+     * Asiento de la nota de crédito que anula una venta: documento aparte (NOTA_CREDITO)
+     * con los mismos importes y el documento afectado. El asiento de la factura no se toca.
+     */
+    public static function recordCreditNote(\App\Models\CreditNote $note, Order $order, ?FiscalLedger $original = null): FiscalLedger
+    {
+        $original ??= FiscalLedger::where('entry_type', 'salida')
+            ->where('related_type', Order::class)
+            ->where('related_id', $order->id)
+            ->first();
+
+        $documentDate = now()->toDateString();
+
+        $entry = FiscalLedger::updateOrCreate([
+            'entry_type' => 'salida',
+            'related_id' => $note->id,
+            'related_type' => \App\Models\CreditNote::class,
+        ], array_merge(self::companyFields($documentDate), [
+            'entry_type' => 'salida',
+            'document_date' => $documentDate,
+            'document_type' => 'NOTA_CREDITO',
+            'document_number' => $note->number,
+            'control_number' => $note->number,
+            'affected_document_number' => $note->affected_document_number,
+            'partner_name' => $original?->partner_name ?? ($note->customer_name ?: 'CONSUMIDOR FINAL'),
+            'partner_tax_id' => $original?->partner_tax_id ?? 'V000000000',
+            'currency' => $original?->currency ?? 'USD',
+            'exchange_rate' => $original?->exchange_rate ?? $order->exchange_rate,
+            'taxable_amount' => (float) ($original?->taxable_amount ?? 0),
+            'exempt_amount' => (float) ($original?->exempt_amount ?? 0),
+            'exonerated_amount' => (float) ($original?->exonerated_amount ?? 0),
+            'non_subject_amount' => (float) ($original?->non_subject_amount ?? 0),
+            'tax_amount' => (float) ($original?->tax_amount ?? $order->tax),
+            'tax_rate' => $original?->tax_rate,
+            'total_amount' => (float) ($original?->total_amount ?? $note->amount),
+            'withholding_amount' => 0,
+            'metadata' => [
+                'source' => 'order_void',
+                'reason' => $note->reason,
+                'order_number' => $order->order_number,
+            ],
+        ]));
+
+        FiscalIntegrityService::recalculateLedgerChainFrom($entry->id);
+
+        return $entry;
+    }
+
     private static function companyFields(?string $documentDate): array
     {
         return [

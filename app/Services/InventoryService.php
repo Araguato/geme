@@ -99,6 +99,80 @@ class InventoryService
     }
 
     /**
+     * Devuelve al inventario lo que descontó una venta anulada: cada movimiento de salida
+     * del pedido se revierte en la misma ubicación y al mismo costo. Es idempotente.
+     */
+    public static function restoreForOrder(Order $order, ?int $userId = null): void
+    {
+        $alreadyRestored = StockMovement::where('reference_type', 'order')
+            ->where('reference_id', $order->id)
+            ->where('reason', 'sale_void')
+            ->exists();
+
+        if ($alreadyRestored) {
+            return;
+        }
+
+        $outs = StockMovement::where('reference_type', 'order')
+            ->where('reference_id', $order->id)
+            ->where('type', 'out')
+            ->whereIn('reason', ['sale', 'sale_recipe'])
+            ->get();
+
+        $products = [];
+
+        foreach ($outs as $out) {
+            $qty = round(abs((float) $out->quantity), 3);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $product = Product::find($out->product_id);
+            if (!$product) {
+                continue;
+            }
+
+            $row = StockItem::where('product_id', $product->id)
+                ->where('warehouse_id', $out->warehouse_id)
+                ->where('location_id', $out->location_id)
+                ->lockForUpdate()
+                ->first()
+                ?? self::newStockItem($product, $out->warehouse_id, $out->location_id);
+
+            $newQty = round((float) $row->quantity + $qty, 3);
+            $row->quantity = $newQty;
+            $row->save();
+
+            $unitCost = (float) $out->unit_cost;
+
+            StockMovement::create([
+                'product_id' => $product->id,
+                'warehouse_id' => $row->warehouse_id,
+                'location_id' => $row->location_id,
+                'unit_id' => $row->unit_id,
+                'movement_date' => now(),
+                'type' => 'in',
+                'reason' => 'sale_void',
+                'quantity' => $qty,
+                'unit' => $row->unit,
+                'unit_cost' => $unitCost,
+                'total_cost' => $qty * $unitCost,
+                'running_quantity' => $newQty,
+                'running_average_cost' => (float) $row->average_cost,
+                'reference_type' => 'order',
+                'reference_id' => $order->id,
+                'performed_by' => $userId,
+            ]);
+
+            $products[$product->id] = $product;
+        }
+
+        foreach ($products as $product) {
+            self::syncStockQuantity($product);
+        }
+    }
+
+    /**
      * Filas de stock del producto, bloqueadas para actualizar: primero la ubicación
      * preferida y luego las demás de mayor a menor existencia.
      */

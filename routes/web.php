@@ -43,6 +43,7 @@ use App\Http\Controllers\InventoryDashboardController;
 use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\AiSettingsController;
 use App\Http\Controllers\MarketingController;
+use App\Http\Controllers\OrderVoidController;
 use Illuminate\Support\Facades\Route;
 
 // Grupos de roles (misma matriz que el menú en resources/views/layout.blade.php)
@@ -138,6 +139,11 @@ Route::middleware(['auth', $sales])->group(function () {
     // Alta rápida de clientes desde el TPV
     Route::get('parties/create', [PartyController::class, 'create'])->name('parties.create');
     Route::post('parties', [PartyController::class, 'store'])->name('parties.store');
+});
+
+// Anulación de ventas (nota de crédito): solo gerencia
+Route::middleware(['auth', $management])->group(function () {
+    Route::post('pos/ticket/{order}/anular', [OrderVoidController::class, 'store'])->name('orders.void');
 });
 
 // Inventario: catálogo, stock y depósitos
