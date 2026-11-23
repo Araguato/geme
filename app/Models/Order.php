@@ -26,6 +26,7 @@ class Order extends Model
         'tax',
         'discount',
         'total',
+        'exchange_rate',
         'notes',
         'delivery_info_id',
         'cash_shift_id',
@@ -36,6 +37,11 @@ class Order extends Model
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
     ];
+
+    public function fiscalDocument()
+    {
+        return $this->hasOne(FiscalDocument::class)->where('document_type', 'FACTURA');
+    }
 
     public function customerParty()
     {

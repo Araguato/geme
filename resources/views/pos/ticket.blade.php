@@ -44,6 +44,24 @@
                         <span>Total</span>
                         <span>$ {{ number_format($order->total, 2) }}</span>
                     </div>
+                    @if($order->exchange_rate)
+                        <div class="d-flex justify-content-between small text-muted pt-1">
+                            <span>Equivalente en Bs (tasa {{ number_format($order->exchange_rate, 4, ',', '.') }})</span>
+                            <span>Bs {{ number_format($order->total * $order->exchange_rate, 2, ',', '.') }}</span>
+                        </div>
+                    @endif
+                    @php($fdoc = $order->fiscalDocument)
+                    @if($fdoc && $fdoc->invoice_number)
+                        <div class="border-top mt-2 pt-2 small">
+                            @if($fdoc->environment === 'test')
+                                <div class="fw-bold text-danger">DOCUMENTO DE PRUEBA · SIN VALIDEZ FISCAL</div>
+                            @endif
+                            <div>Factura N° <strong>{{ $fdoc->invoice_number }}</strong></div>
+                            <div>N° de control <strong>{{ $fdoc->control_number }}</strong></div>
+                        </div>
+                    @elseif($fdoc)
+                        <div class="border-top mt-2 pt-2 small text-muted">Factura fiscal pendiente de emisión.</div>
+                    @endif
                 </div>
             </div>
         </div>

@@ -10,6 +10,8 @@ use App\Models\Party;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\SalesLocation;
+use App\Services\ExchangeRateService;
+use App\Services\Fiscal\FiscalEmissionService;
 use App\Services\FiscalLedgerService;
 use App\Services\InventoryService;
 use Illuminate\Http\Request;
@@ -109,6 +111,7 @@ class PosController extends Controller
                 'tax' => 0,
                 'discount' => 0,
                 'total' => 0,
+                'exchange_rate' => ExchangeRateService::getRateForDate(now()) ?: null,
                 'cash_shift_id' => $activeShift->id,
             ]);
 
@@ -186,6 +189,7 @@ class PosController extends Controller
         });
 
         FiscalLedgerService::recordSale($order);
+        FiscalEmissionService::enqueue($order); // no hace nada si no hay medio fiscal configurado
 
         return redirect()->route('pos.index')->with('success', 'Venta registrada correctamente.');
     }

@@ -27,6 +27,7 @@ use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\UnitConversionAdminController;
 use App\Http\Controllers\RecurringSupplierInvoiceController;
 use App\Http\Controllers\HelpCenterController;
+use App\Http\Controllers\FiscalDocumentController;
 use App\Http\Controllers\FiscalLedgerController;
 use App\Http\Controllers\PartyController;
 use App\Http\Controllers\DashboardController;
@@ -206,6 +207,12 @@ Route::middleware(['auth', $finance])->group(function () {
     Route::get('fiscal-ledger/tax-report', [FiscalLedgerController::class, 'taxReport'])->name('fiscal-ledger.tax-report');
     Route::get('fiscal-ledger/export-xml', [FiscalLedgerController::class, 'exportXml'])->name('fiscal-ledger.export-xml');
 
+    // Documentos fiscales por medio autorizado (SNAT/2026/00093)
+    Route::get('fiscal-documents', [FiscalDocumentController::class, 'index'])->name('fiscal-documents.index');
+    Route::post('fiscal-documents/process', [FiscalDocumentController::class, 'processPending'])->name('fiscal-documents.process');
+    Route::post('fiscal-documents/{document}/retry', [FiscalDocumentController::class, 'retry'])->name('fiscal-documents.retry');
+    Route::post('fiscal-documents/{document}/contingency', [FiscalDocumentController::class, 'contingency'])->name('fiscal-documents.contingency');
+
     // Categorías de gastos
     Route::get('finances/categories', [ExpenseCategoryController::class, 'index'])->name('finances.categories.index');
     Route::get('finances/categories/create', [ExpenseCategoryController::class, 'create'])->name('finances.categories.create');
@@ -252,6 +259,10 @@ Route::middleware(['auth', $adminOnly])->group(function () {
     Route::post('settings/ai', [AiSettingsController::class, 'update'])->name('settings.ai.update');
     Route::post('settings/ai/disable', [AiSettingsController::class, 'disable'])->name('settings.ai.disable');
     Route::post('settings/ai/test', [AiSettingsController::class, 'test'])->middleware('throttle:6,1')->name('settings.ai.test');
+
+    // Medio de emisión fiscal (desactivado por defecto)
+    Route::get('settings/fiscal', [FiscalDocumentController::class, 'edit'])->name('settings.fiscal.edit');
+    Route::post('settings/fiscal', [FiscalDocumentController::class, 'update'])->name('settings.fiscal.update');
 
     // Datos fiscales de la empresa (SENIAT)
     Route::get('settings/company', [SettingController::class, 'editCompany'])->name('settings.company.edit');

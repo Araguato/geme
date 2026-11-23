@@ -259,15 +259,15 @@ Un modelo abierto pequeño en un servidor propio con GPU tiene un coste **fijo**
 
 | Requisito | Estado actual | Acción |
 |---|---|---|
-| Emisión por medio autorizado | ❌ GEME genera la venta pero no es medio autorizado | **Integración por API con una imprenta digital autorizada** (vía principal) y, de forma opcional, controlador para máquina fiscal. |
+| Emisión por medio autorizado | 🟡 Base lista (cola, interfaz, contingencia); falta el driver de la imprenta | **Integración por API con una imprenta digital autorizada** (vía principal) y, de forma opcional, controlador para máquina fiscal. |
 | Número de control | Campo `control_number` en el libro; no se obtiene de un medio autorizado | Recibirlo de la imprenta digital y guardarlo en la orden y en el libro. |
 | Numeración consecutiva | `order_number` interno | Usar el número de factura asignado por el medio autorizado. |
 | Hora de emisión | ✅ (`created_at`) | Mostrarla en el comprobante. |
 | Datos del adquirente | Parcial (cliente opcional en el TPV) | Pedir RIF o cédula cuando corresponda; validar el formato del RIF. |
-| Moneda extranjera (equivalente en Bs y tasa) | Tasa BCV guardada por día (`ExchangeRateService`) | Guardar la tasa usada **en cada venta** e imprimir el equivalente en Bs y la tasa. |
+| Moneda extranjera (equivalente en Bs y tasa) | ✅ Tasa guardada por venta e impresa en el ticket | Guardar la tasa usada **en cada venta** e imprimir el equivalente en Bs y la tasa. |
 | Marca (E) y desglose por alícuota | ✅ en libros | Verificar en el comprobante. |
 | Notas de crédito y débito | ✅ (modelos existentes) | Emitirlas también por el medio autorizado. |
-| Modo contingencia | ❌ | Pantalla para registrar facturas de talonario y exportar o enviar el PDF al día siguiente. |
+| Modo contingencia | ✅ Registro de talonario (falta envío del PDF al día siguiente) | Pantalla para registrar facturas de talonario y exportar o enviar el PDF al día siguiente. |
 | Libros de compras y ventas | ✅ (XML) | Mantener; revisar formatos tras la entrada en vigor. |
 | Integridad e inalterabilidad | ✅ cadena hash (`FiscalIntegrityService`) | Mantener; documentar en el SGSI (control 8.15 y 5.33). |
 
@@ -281,6 +281,24 @@ Un modelo abierto pequeño en un servidor propio con GPU tiene un coste **fijo**
 | 4. Modo contingencia | feb. 2027 | Registro de talonarios y envío del PDF. |
 | 5. Pruebas en entorno de pruebas del proveedor | mar. 2027 | Batería de tests y piloto en `tienda.quorixtech.eu`. |
 | 6. Producción | antes del 19-04-2027 | Comunicación de cambio de medio al SENIAT si corresponde. |
+
+### 5.5 Base de facturación por medio autorizado (implementada el 22-11-2026)
+
+Se construyó la **parte común**, sin ninguna imprenta real conectada y **desactivada por defecto**: mientras el medio sea «Ninguno», GEME se comporta exactamente como antes.
+
+| Pieza | Detalle |
+|---|---|
+| Interfaz `FiscalProvider` | Cada imprenta será un driver (`issue`, `testConnection`) registrado en `FiscalManager`. El TPV no cambia al añadir una. |
+| Medios disponibles hoy | `none` (por defecto) y `sandbox` (simulado: números «PRUEBA-…», tickets marcados «sin validez fiscal»). |
+| Ajuste (Admin) | *Administración → Medio de emisión fiscal*; el cambio queda en auditoría. |
+| Cola `fiscal_documents` | Estados: pendiente, emitida, error, contingencia, anulada. Una fila por pedido y tipo (sin duplicados). |
+| Emisión | Tras responder al TPV (`dispatchAfterResponse`, sin necesidad de worker). **La venta nunca se bloquea.** Reintentos con espera creciente (1, 2, 4… máx. 60 min), hasta 8 intentos; luego requiere intervención. Comando `php artisan fiscal:process-pending` para el planificador. |
+| Contingencia | Bandeja *Facturación fiscal* (Admin, Supervisor, Contable): reintentar o registrar el número de factura y de control de un talonario; auditado. |
+| Datos de la factura | Emisor, adquirente (formato de RIF/cédula validado, «CONSUMIDOR FINAL» si no hay), fecha y hora, líneas con marca (E), base e IVA por alícuota, total y **equivalente en Bs con la tasa**. |
+| Tasa por venta | `orders.exchange_rate` guarda la tasa BCV aplicada en cada venta; el ticket muestra el equivalente en Bs. |
+| Libro de ventas | Con medio activo, el número de factura y de control del libro son los asignados por el medio. |
+
+**Pendiente:** el driver de la imprenta elegida (con credenciales cifradas y *entorno de pruebas / producción*), notas de crédito y débito por el medio, y la validación del dígito verificador del RIF (hoy solo se comprueba el formato). Si un cliente usa máquina fiscal (p. ej. HKA 80), necesitaría un puente local aparte; no se ha empezado.
 
 > **Aviso:** este análisis se basa en resúmenes de asesoras (Deloitte Boletín 55, Forvis Mazars FMI 0726, Crowe, PwC) y prensa especializada, no en el texto íntegro de la Gaceta Oficial. Antes del desarrollo debe confirmarlo un profesional tributario.
 

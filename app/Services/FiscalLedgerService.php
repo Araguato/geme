@@ -62,7 +62,7 @@ class FiscalLedgerService
             return null;
         }
 
-        $order->loadMissing(['items', 'customerParty']);
+        $order->loadMissing(['items', 'customerParty', 'fiscalDocument']);
 
         $taxable = 0.0;
         $exempt = 0.0;
@@ -119,7 +119,8 @@ class FiscalLedgerService
 
         $documentType = $order->document_type ?? 'FACTURA';
         $documentNumber = $order->external_invoice_number ?? $order->order_number;
-        $controlNumber = $order->order_number;
+        // Con medio autorizado, el número de control lo asigna la imprenta
+        $controlNumber = $order->fiscalDocument?->control_number ?: $order->order_number;
 
         $entry = FiscalLedger::updateOrCreate([
             'entry_type' => 'salida',

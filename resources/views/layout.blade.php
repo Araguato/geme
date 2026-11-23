@@ -459,6 +459,9 @@
                                     <li>
                                         <a class="dropdown-item" href="{{ route('fiscal-ledger.tax-report') }}">Resumen de impuestos</a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('fiscal-documents.index') }}">Facturación fiscal</a>
+                                    </li>
                                 </ul>
                             </li>
                         @endif
@@ -593,6 +596,9 @@
                                     </li>
                                     <li>
                                         <a class="dropdown-item" href="{{ route('settings.ai.edit') }}"><i class="bi bi-stars"></i> Inteligencia artificial</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('settings.fiscal.edit') }}"><i class="bi bi-receipt"></i> Medio de emisión fiscal</a>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li class="px-3 text-muted small">{{ __('ui.layout.people') }}</li>

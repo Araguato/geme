@@ -64,3 +64,8 @@ Artisan::command('license:status', function (LicenseService $license) {
 
     return $status['ok'] ? 0 : 1;
 })->purpose('Show current license status');
+
+Artisan::command('fiscal:process-pending', function () {
+    $n = \App\Services\Fiscal\FiscalEmissionService::processDue();
+    $this->info("Documentos fiscales procesados: {$n}");
+})->purpose('Emite los documentos fiscales pendientes y reintenta los que fallaron');
