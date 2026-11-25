@@ -25,8 +25,12 @@ class ProductController extends Controller
         $missingLocation = $request->boolean('sin_ubicacion');
 
         $query = Product::with(['category', 'barcodes', 'warehouse', 'location'])
-            ->whereNull('parent_product_id')
             ->orderBy('name');
+
+        // Sin búsqueda se listan solo los productos base; al buscar se incluyen las variantes
+        if (!is_string($search) || trim($search) === '') {
+            $query->whereNull('parent_product_id');
+        }
 
         // Productos físicos sin ubicación asignada (servicios y preparados no la necesitan)
         $withoutLocation = fn ($q) => $q->whereNull('location_id')
@@ -44,17 +48,7 @@ class ProductController extends Controller
         }
 
         if ($search) {
-            $searchTerm = trim($search);
-            if ($searchTerm !== '') {
-                $query->where(function ($q) use ($searchTerm) {
-                    $like = '%' . $searchTerm . '%';
-                    $q->where('name', 'like', $like)
-                        ->orWhere('sku', 'like', $like)
-                        ->orWhereHas('barcodes', function ($qb) use ($like) {
-                            $qb->where('barcode', 'like', $like);
-                        });
-                });
-            }
+            $query->searchTerm($search);
         }
 
         $products = $query->get();
@@ -72,17 +66,7 @@ class ProductController extends Controller
             ->orderBy('name');
 
         if ($search) {
-            $searchTerm = trim($search);
-            if ($searchTerm !== '') {
-                $query->where(function ($q) use ($searchTerm) {
-                    $like = '%' . $searchTerm . '%';
-                    $q->where('name', 'like', $like)
-                        ->orWhere('sku', 'like', $like)
-                        ->orWhereHas('barcodes', function ($qb) use ($like) {
-                            $qb->where('barcode', 'like', $like);
-                        });
-                });
-            }
+            $query->searchTerm($search);
         }
 
         $products = $query->limit(50)->get();
@@ -99,17 +83,7 @@ class ProductController extends Controller
             ->orderBy('name');
 
         if ($search) {
-            $searchTerm = trim($search);
-            if ($searchTerm !== '') {
-                $query->where(function ($q) use ($searchTerm) {
-                    $like = '%' . $searchTerm . '%';
-                    $q->where('name', 'like', $like)
-                        ->orWhere('sku', 'like', $like)
-                        ->orWhereHas('barcodes', function ($qb) use ($like) {
-                            $qb->where('barcode', 'like', $like);
-                        });
-                });
-            }
+            $query->searchTerm($search);
         }
 
         $products = $query->limit(20)->get();
@@ -350,17 +324,7 @@ class ProductController extends Controller
         }
 
         if ($search) {
-            $searchTerm = trim($search);
-            if ($searchTerm !== '') {
-                $query->where(function ($q) use ($searchTerm) {
-                    $like = '%' . $searchTerm . '%';
-                    $q->where('name', 'like', $like)
-                        ->orWhere('sku', 'like', $like)
-                        ->orWhereHas('barcodes', function ($qb) use ($like) {
-                            $qb->where('barcode', 'like', $like);
-                        });
-                });
-            }
+            $query->searchTerm($search);
         }
 
         $products = $query->get();

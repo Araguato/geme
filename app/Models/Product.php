@@ -118,6 +118,26 @@ class Product extends Model
         return $this->hasMany(ProductVariantAttribute::class);
     }
 
+    /**
+     * Búsqueda por nombre, SKU o código de barras. Cada palabra debe aparecer en alguno
+     * de los tres (así «salsa tomate» encuentra «Salsa de tomate»), sin importar el orden.
+     */
+    public function scopeSearchTerm($query, ?string $term)
+    {
+        $words = preg_split('/\s+/', trim((string) $term), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        foreach ($words as $word) {
+            $like = '%' . addcslashes($word, '%_\\') . '%';
+            $query->where(function ($q) use ($like) {
+                $q->where('name', 'like', $like)
+                    ->orWhere('sku', 'like', $like)
+                    ->orWhereHas('barcodes', fn ($qb) => $qb->where('barcode', 'like', $like));
+            });
+        }
+
+        return $query;
+    }
+
     public function isVariant(): bool
     {
         return !is_null($this->parent_product_id);
