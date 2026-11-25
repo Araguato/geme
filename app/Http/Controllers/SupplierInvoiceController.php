@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\StockMovement;
@@ -45,6 +46,7 @@ class SupplierInvoiceController extends Controller
             'bcvRate' => $bcvRate,
             'prefetchedProducts' => $prefetchedProducts,
             'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(),
+            'categories' => Category::orderBy('name')->get(['id', 'name']),
             'mode' => 'create',
         ]);
     }
@@ -79,6 +81,7 @@ class SupplierInvoiceController extends Controller
             'bcvRate' => $bcvRate,
             'prefetchedProducts' => $prefetchedProducts,
             'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(),
+            'categories' => Category::orderBy('name')->get(['id', 'name']),
             // Al editar se mantiene el depósito donde entró la mercancía
             'selectedWarehouseId' => StockMovement::where('reference_type', 'supplier_invoice')
                 ->where('reference_id', $supplierInvoice->id)
@@ -204,10 +207,7 @@ class SupplierInvoiceController extends Controller
         ];
 
         if ($ids->isEmpty()) {
-            return Product::orderBy('name')
-                ->limit(25)
-                ->get($columns)
-                ->keyBy('id');
+            return collect();
         }
 
         return Product::whereIn('id', $ids)

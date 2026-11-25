@@ -185,14 +185,15 @@
                 @foreach($items as $index => $row)
                     <tr>
                         <td>
-                            <select name="items[{{ $index }}][product_id]" class="form-select form-select-sm">
-                                <option value="">— Seleccione —</option>
-                                @foreach($prefetchedProducts as $product)
-                                    <option value="{{ $product->id }}" @selected((string)($row['product_id'] ?? '') === (string) $product->id)>
-                                        {{ $product->name }} @if($product->sku) ({{ $product->sku }}) @endif
-                                    </option>
-                                @endforeach
-                            </select>
+                            @php($selected = $prefetchedProducts->get((int) ($row['product_id'] ?? 0)))
+                            <input type="hidden" name="items[{{ $index }}][product_id]" class="product-id" value="{{ $row['product_id'] ?? '' }}">
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control product-search" autocomplete="off"
+                                       placeholder="Buscar por nombre, SKU o código…"
+                                       value="{{ $selected ? $selected->name . ($selected->sku ? ' (' . $selected->sku . ')' : '') : '' }}"
+                                       data-selected-label="{{ $selected ? $selected->name . ($selected->sku ? ' (' . $selected->sku . ')' : '') : '' }}">
+                                <button type="button" class="btn btn-outline-secondary product-clear" tabindex="-1" title="Quitar producto">&times;</button>
+                            </div>
                         </td>
                         <td>
                             <input type="text" name="items[{{ $index }}][description]" class="form-control form-control-sm"
@@ -249,6 +250,66 @@
         <button type="submit" class="btn btn-primary">Guardar</button>
         <a href="{{ route('supplier-invoices.index') }}" class="btn btn-secondary">Cancelar</a>
     </form>
+
+    <div class="modal fade" id="quick-product-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form class="modal-content" id="quick-product-form" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title">Crear producto nuevo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger d-none" id="quick-product-error"></div>
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label">Nombre *</label>
+                            <input type="text" name="name" class="form-control" maxlength="255" required>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label">Categoría *</label>
+                            <select name="category_id" class="form-select" required>
+                                <option value="">— Seleccione —</option>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">SKU</label>
+                            <input type="text" name="sku" class="form-control" maxlength="50">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Unidad</label>
+                            <input type="text" name="default_unit" class="form-control" maxlength="20" placeholder="und, kg…">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Costo</label>
+                            <input type="number" name="cost" class="form-control" step="0.0001" min="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Precio de venta</label>
+                            <input type="number" name="price" class="form-control" step="0.01" min="0" placeholder="= costo">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">IVA %</label>
+                            <input type="number" name="tax_rate" class="form-control" step="0.01" min="0" max="100">
+                        </div>
+                        <div class="col-md-8 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_stock_tracked" id="quick-stock" checked>
+                                <label class="form-check-label" for="quick-stock">Controlar inventario (la compra suma stock)</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">Si dejas el precio vacío se usa el costo; revísalo después en Productos.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="quick-product-save">Crear y usar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -258,16 +319,15 @@
         const addButton = document.getElementById('add-item-row');
         let rowIndex = {{ count($items) }};
 
-        const productOptionsHtml = `@foreach($prefetchedProducts as $product)<option value="{{ $product->id }}">{{ addslashes($product->name) }}@if($product->sku) ({{ addslashes($product->sku) }})@endif</option>@endforeach`;
-
         function buildRow(index) {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>
-                    <select name="items[${index}][product_id]" class="form-select form-select-sm">
-                        <option value="">— Seleccione —</option>
-                        ${productOptionsHtml}
-                    </select>
+                    <input type="hidden" name="items[${index}][product_id]" class="product-id" value="">
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control product-search" autocomplete="off" placeholder="Buscar por nombre, SKU o código…" data-selected-label="">
+                        <button type="button" class="btn btn-outline-secondary product-clear" tabindex="-1" title="Quitar producto">&times;</button>
+                    </div>
                 </td>
                 <td><input type="text" name="items[${index}][description]" class="form-control form-control-sm"></td>
                 <td><input type="text" name="items[${index}][unit]" class="form-control form-control-sm"></td>
@@ -298,6 +358,232 @@
                     const inputs = event.target.closest('tr').querySelectorAll('input, select');
                     inputs.forEach((input) => input.value = '');
                 }
+            }
+        });
+
+        // ---------- Buscador de productos y creación rápida ----------
+        const form = document.getElementById('supplier-invoice-form');
+        const csrf = form.querySelector('input[name="_token"]').value;
+        const searchUrl = @json(route('supplier-invoices.products.search'));
+        const createUrl = @json(route('supplier-invoices.products.store'));
+
+        const panel = document.createElement('div');
+        panel.className = 'list-group shadow d-none';
+        panel.style.cssText = 'position:fixed;z-index:2000;max-height:280px;overflow:auto';
+        document.body.appendChild(panel);
+
+        let activeInput = null;
+        let timer = null;
+        let seq = 0;
+        let highlighted = -1;
+
+        const rowOf = (el) => el.closest('tr');
+        const field = (tr, name) => tr.querySelector(`[name$="[${name}]"]`);
+
+        function closePanel() {
+            panel.classList.add('d-none');
+            panel.innerHTML = '';
+            highlighted = -1;
+        }
+
+        function placePanel() {
+            if (!activeInput) return;
+            const r = activeInput.getBoundingClientRect();
+            panel.style.left = r.left + 'px';
+            panel.style.top = (r.bottom + 2) + 'px';
+            panel.style.width = Math.max(r.width, 320) + 'px';
+        }
+
+        function labelOf(p) {
+            return p.name + (p.sku ? ' (' + p.sku + ')' : '');
+        }
+
+        function chooseProduct(tr, p) {
+            const input = tr.querySelector('.product-search');
+            field(tr, 'product_id').value = p.id;
+            input.value = labelOf(p);
+            input.dataset.selectedLabel = input.value;
+            input.classList.remove('is-invalid');
+            const setIfEmpty = (name, value) => {
+                const el = field(tr, name);
+                if (el && value !== null && value !== undefined && value !== '' && el.value === '') el.value = value;
+            };
+            setIfEmpty('description', p.name);
+            setIfEmpty('unit', p.default_unit);
+            setIfEmpty('unit_cost', p.cost);
+            setIfEmpty('tax_rate', p.tax_rate);
+            closePanel();
+            (field(tr, 'quantity') || input).focus();
+        }
+
+        function renderResults(tr, products, term) {
+            panel.innerHTML = '';
+            products.forEach((p) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'list-group-item list-group-item-action py-1';
+                const cost = p.cost ? ' · costo ' + Number(p.cost).toFixed(2) : '';
+                b.innerHTML = '<div class="fw-semibold"></div><div class="small text-muted"></div>';
+                b.firstChild.textContent = p.name;
+                b.lastChild.textContent = (p.sku ? 'SKU ' + p.sku : 'sin SKU') + (p.default_unit ? ' · ' + p.default_unit : '') + cost;
+                b.addEventListener('mousedown', (e) => { e.preventDefault(); chooseProduct(tr, p); });
+                panel.appendChild(b);
+            });
+            const create = document.createElement('button');
+            create.type = 'button';
+            create.className = 'list-group-item list-group-item-action py-2 text-primary';
+            create.textContent = term ? '+ Crear producto nuevo «' + term + '»' : '+ Crear producto nuevo';
+            create.addEventListener('mousedown', (e) => { e.preventDefault(); closePanel(); openCreateModal(tr, term); });
+            panel.appendChild(create);
+            if (!products.length) {
+                const none = document.createElement('div');
+                none.className = 'list-group-item small text-muted py-1';
+                none.textContent = term ? 'Sin resultados para «' + term + '».' : 'Escribe para buscar…';
+                panel.insertBefore(none, create);
+            }
+            panel.classList.remove('d-none');
+            placePanel();
+            highlighted = -1;
+        }
+
+        async function runSearch(input) {
+            const tr = rowOf(input);
+            const term = input.value.trim();
+            const mine = ++seq;
+            try {
+                const res = await fetch(searchUrl + '?q=' + encodeURIComponent(term), { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (mine !== seq || activeInput !== input) return;
+                renderResults(tr, data.products || [], term);
+            } catch (e) {
+                panel.innerHTML = '<div class="list-group-item small text-danger">No se pudo buscar. Revisa la conexión.</div>';
+                panel.classList.remove('d-none');
+                placePanel();
+            }
+        }
+
+        itemsBody.addEventListener('focusin', (e) => {
+            if (!e.target.classList.contains('product-search')) return;
+            activeInput = e.target;
+            runSearch(e.target);
+        });
+
+        itemsBody.addEventListener('input', (e) => {
+            if (!e.target.classList.contains('product-search')) return;
+            const input = e.target;
+            activeInput = input;
+            // Escribir de nuevo invalida el producto elegido
+            if (input.value !== input.dataset.selectedLabel) {
+                field(rowOf(input), 'product_id').value = '';
+            }
+            clearTimeout(timer);
+            timer = setTimeout(() => runSearch(input), 200);
+        });
+
+        itemsBody.addEventListener('keydown', (e) => {
+            if (!e.target.classList.contains('product-search') || panel.classList.contains('d-none')) return;
+            const items = Array.from(panel.querySelectorAll('button'));
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                highlighted = (highlighted + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+                items.forEach((b, i) => b.classList.toggle('active', i === highlighted));
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const target = items[highlighted >= 0 ? highlighted : 0];
+                if (target) target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+            } else if (e.key === 'Escape') {
+                closePanel();
+            }
+        });
+
+        itemsBody.addEventListener('focusout', (e) => {
+            if (e.target.classList.contains('product-search')) setTimeout(closePanel, 150);
+        });
+
+        itemsBody.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('product-clear')) return;
+            const tr = rowOf(e.target);
+            const input = tr.querySelector('.product-search');
+            field(tr, 'product_id').value = '';
+            input.value = '';
+            input.dataset.selectedLabel = '';
+            input.focus();
+        });
+
+        window.addEventListener('scroll', placePanel, true);
+        window.addEventListener('resize', placePanel);
+
+        // Aviso si un renglón tiene texto en el buscador pero no se eligió ningún producto
+        form.addEventListener('submit', (e) => {
+            const loose = Array.from(itemsBody.querySelectorAll('tr')).filter((tr) => {
+                const input = tr.querySelector('.product-search');
+                return input && input.value.trim() !== '' && !field(tr, 'product_id').value;
+            });
+            if (loose.length && !confirm('Hay ' + loose.length + ' renglón(es) con texto pero sin producto elegido: se guardarán sin entrada de inventario. ¿Guardar de todos modos?')) {
+                e.preventDefault();
+                loose[0].querySelector('.product-search').classList.add('is-invalid');
+                loose[0].querySelector('.product-search').focus();
+            }
+        });
+
+        // ---------- Modal: crear producto ----------
+        const modalEl = document.getElementById('quick-product-modal');
+        const modal = new bootstrap.Modal(modalEl);
+        const qForm = document.getElementById('quick-product-form');
+        const qError = document.getElementById('quick-product-error');
+        let modalRow = null;
+
+        function openCreateModal(tr, term) {
+            modalRow = tr;
+            qForm.reset();
+            qError.classList.add('d-none');
+            qForm.elements.name.value = term || '';
+            const unit = field(tr, 'unit'); const cost = field(tr, 'unit_cost'); const tax = field(tr, 'tax_rate');
+            if (unit && unit.value) qForm.elements.default_unit.value = unit.value;
+            if (cost && cost.value) qForm.elements.cost.value = cost.value;
+            if (tax && tax.value) qForm.elements.tax_rate.value = tax.value;
+            modal.show();
+        }
+
+        modalEl.addEventListener('shown.bs.modal', () => qForm.elements.name.focus());
+
+        qForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            qError.classList.add('d-none');
+            const payload = Object.fromEntries(new FormData(qForm).entries());
+            payload.is_stock_tracked = qForm.elements.is_stock_tracked.checked ? 1 : 0;
+            const btn = document.getElementById('quick-product-save');
+            btn.disabled = true;
+            try {
+                const res = await fetch(createUrl, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const msgs = data.errors ? Object.values(data.errors).flat() : [data.message || 'No se pudo crear el producto.'];
+                    qError.innerHTML = '';
+                    msgs.forEach((m) => { const d = document.createElement('div'); d.textContent = m; qError.appendChild(d); });
+                    if (data.existing) {
+                        const use = document.createElement('button');
+                        use.type = 'button';
+                        use.className = 'btn btn-sm btn-outline-primary mt-2';
+                        use.textContent = 'Usar el existente';
+                        use.addEventListener('click', () => { modal.hide(); chooseProduct(modalRow, data.existing); });
+                        qError.appendChild(use);
+                    }
+                    qError.classList.remove('d-none');
+                    return;
+                }
+                modal.hide();
+                chooseProduct(modalRow, data.product);
+            } catch (err) {
+                qError.textContent = 'No se pudo crear el producto. Revisa la conexión.';
+                qError.classList.remove('d-none');
+            } finally {
+                btn.disabled = false;
             }
         });
     })();

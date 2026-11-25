@@ -45,6 +45,7 @@ use App\Http\Controllers\AiSettingsController;
 use App\Http\Controllers\MarketingController;
 use App\Http\Controllers\OrderVoidController;
 use App\Http\Controllers\DeliveryNoteController;
+use App\Http\Controllers\SupplierInvoiceProductController;
 use Illuminate\Support\Facades\Route;
 
 // Grupos de roles (misma matriz que el menú en resources/views/layout.blade.php)
@@ -190,6 +191,9 @@ Route::middleware(['auth', $finance])->group(function () {
     Route::get('reports/sales', [SalesReportController::class, 'index'])->name('reports.sales');
     Route::get('reports/sales/export', [SalesReportController::class, 'export'])->name('reports.sales.export');
 
+    // Buscar y crear productos desde el formulario de factura (antes del resource: {supplier_invoice} capturaría «products»)
+    Route::get('supplier-invoices/products/search', [SupplierInvoiceProductController::class, 'search'])->name('supplier-invoices.products.search');
+    Route::post('supplier-invoices/products', [SupplierInvoiceProductController::class, 'store'])->name('supplier-invoices.products.store');
     Route::resource('supplier-invoices', SupplierInvoiceController::class)->except(['destroy']);
     Route::post('supplier-invoices/{supplierInvoice}/payments', [SupplierPaymentController::class, 'store'])
         ->name('supplier-invoices.payments.store');
