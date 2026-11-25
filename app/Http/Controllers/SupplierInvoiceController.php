@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\StockMovement;
+use App\Models\Unit;
 use App\Models\Supplier;
 use App\Models\SupplierInvoice;
 use App\Models\Warehouse;
@@ -14,6 +15,15 @@ use Illuminate\Http\Request;
 
 class SupplierInvoiceController extends Controller
 {
+    /** Alícuotas de IVA en Venezuela; 16 % es la general y la que se propone por defecto. */
+    public const TAX_OPTIONS = [
+        '16' => '16 % · General',
+        '8' => '8 % · Reducida',
+        '31' => '31 % · General + adicional',
+        '0' => '0 % · Exento',
+    ];
+    public const DEFAULT_TAX_RATE = 16;
+
     public function index(Request $request)
     {
         $suppliers = Supplier::with('party')->orderByDesc('id')->get();
@@ -47,6 +57,8 @@ class SupplierInvoiceController extends Controller
             'prefetchedProducts' => $prefetchedProducts,
             'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(),
             'categories' => Category::orderBy('name')->get(['id', 'name']),
+            'unitOptions' => $this->unitOptions(),
+            'taxOptions' => self::TAX_OPTIONS,
             'mode' => 'create',
         ]);
     }
@@ -82,6 +94,8 @@ class SupplierInvoiceController extends Controller
             'prefetchedProducts' => $prefetchedProducts,
             'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(),
             'categories' => Category::orderBy('name')->get(['id', 'name']),
+            'unitOptions' => $this->unitOptions(),
+            'taxOptions' => self::TAX_OPTIONS,
             // Al editar se mantiene el depósito donde entró la mercancía
             'selectedWarehouseId' => StockMovement::where('reference_type', 'supplier_invoice')
                 ->where('reference_id', $supplierInvoice->id)
@@ -119,6 +133,27 @@ class SupplierInvoiceController extends Controller
         ]);
     }
 
+    /** @return array<int, array{value: string, label: string}> */
+    protected function unitOptions(): array
+    {
+        $units = Unit::where('is_active', true)->orderBy('category')->orderBy('name')->get();
+
+        if ($units->isEmpty()) {
+            return [
+                ['value' => 'unidad', 'label' => 'Unidad'],
+                ['value' => 'kg', 'label' => 'Kilogramo (kg)'],
+                ['value' => 'g', 'label' => 'Gramo (g)'],
+                ['value' => 'l', 'label' => 'Litro (l)'],
+                ['value' => 'ml', 'label' => 'Mililitro (ml)'],
+            ];
+        }
+
+        return $units->map(fn (Unit $u) => [
+            'value' => $u->legacy_value,
+            'label' => $u->name . ' (' . strtolower($u->code) . ')',
+        ])->values()->all();
+    }
+
     protected function validateData(Request $request): array
     {
         $bcvRate = (float) Setting::get('bcv_rate', 0);
@@ -145,7 +180,7 @@ class SupplierInvoiceController extends Controller
             'items.*.description' => 'nullable|string|max:255',
             'items.*.unit' => 'nullable|string|max:20',
             'items.*.quantity' => 'required|numeric|min:0.0001',
-            'items.*.unit_cost' => 'required|numeric|min:0',
+            'items.*.unit_cost' => 'required|numeric|gt:0',
             'items.*.tax_rate' => 'nullable|numeric|min:0',
             'items.*.tax_amount' => 'nullable|numeric|min:0',
             'items.*.subtotal' => 'nullable|numeric|min:0',

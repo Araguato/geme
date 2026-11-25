@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Product;
+use App\Models\StockItem;
+use App\Models\SupplierInvoiceItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,8 +36,12 @@ class SupplierInvoiceProductController extends Controller
             });
         }
 
+        $products = $query->limit(20)->get();
+        $currency = strtoupper((string) $request->query('currency', 'USD')) ?: 'USD';
+        $hints = $this->costHints($products->pluck('id')->all(), $currency);
+
         return response()->json([
-            'products' => $query->limit(20)->get()->map(fn (Product $p) => $this->payload($p))->values(),
+            'products' => $products->map(fn (Product $p) => $this->payload($p, $hints[$p->id] ?? []))->values(),
         ]);
     }
 
@@ -101,7 +107,58 @@ class SupplierInvoiceProductController extends Controller
         return response()->json(['product' => $this->payload($product), 'price_from_cost' => !isset($data['price'])], 201);
     }
 
-    private function payload(Product $p): array
+    /**
+     * Costo sugerido por producto para el renglón: última compra (en la misma moneda de la
+     * factura) → costo del producto → costo promedio del inventario. Los dos últimos están
+     * en USD, así que solo se ofrecen en facturas en USD. El precio de venta nunca se usa
+     * como costo: se devuelve aparte como referencia.
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, array{suggested_cost: float|null, cost_source: string|null}>
+     */
+    private function costHints(array $ids, string $currency): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        $lastIds = SupplierInvoiceItem::query()
+            ->join('supplier_invoices', 'supplier_invoices.id', '=', 'supplier_invoice_items.supplier_invoice_id')
+            ->whereIn('supplier_invoice_items.product_id', $ids)
+            ->where('supplier_invoices.currency', $currency)
+            ->where('supplier_invoice_items.unit_cost', '>', 0)
+            ->groupBy('supplier_invoice_items.product_id')
+            ->selectRaw('MAX(supplier_invoice_items.id) as id')
+            ->pluck('id');
+
+        $last = SupplierInvoiceItem::whereIn('id', $lastIds)->pluck('unit_cost', 'product_id');
+
+        $avg = $currency === 'USD'
+            ? StockItem::whereIn('product_id', $ids)->where('quantity', '>', 0)->where('average_cost', '>', 0)
+                ->selectRaw('product_id, SUM(quantity * average_cost) / SUM(quantity) as avg_cost')
+                ->groupBy('product_id')
+                ->pluck('avg_cost', 'product_id')
+            : collect();
+
+        $products = Product::whereIn('id', $ids)->pluck('cost', 'id');
+
+        $out = [];
+        foreach ($ids as $id) {
+            if ((float) ($last[$id] ?? 0) > 0) {
+                $out[$id] = ['suggested_cost' => round((float) $last[$id], 4), 'cost_source' => 'última compra'];
+            } elseif ($currency === 'USD' && (float) ($products[$id] ?? 0) > 0) {
+                $out[$id] = ['suggested_cost' => round((float) $products[$id], 4), 'cost_source' => 'costo del producto'];
+            } elseif ((float) ($avg[$id] ?? 0) > 0) {
+                $out[$id] = ['suggested_cost' => round((float) $avg[$id], 4), 'cost_source' => 'costo promedio'];
+            } else {
+                $out[$id] = ['suggested_cost' => null, 'cost_source' => null];
+            }
+        }
+
+        return $out;
+    }
+
+    private function payload(Product $p, array $hint = []): array
     {
         return [
             'id' => $p->id,
@@ -111,6 +168,10 @@ class SupplierInvoiceProductController extends Controller
             'cost' => $p->cost !== null ? (float) $p->cost : null,
             'tax_rate' => $p->tax_rate !== null ? (float) $p->tax_rate : null,
             'is_stock_tracked' => (bool) $p->is_stock_tracked,
+            'price' => $p->price !== null ? (float) $p->price : null,
+            // Con sugerencia calculada (aunque sea «ninguna») manda esa; sin ella, el costo del producto
+            'suggested_cost' => array_key_exists('suggested_cost', $hint) ? $hint['suggested_cost'] : ((float) $p->cost > 0 ? (float) $p->cost : null),
+            'cost_source' => array_key_exists('cost_source', $hint) ? $hint['cost_source'] : ((float) $p->cost > 0 ? 'costo del producto' : null),
         ];
     }
 }

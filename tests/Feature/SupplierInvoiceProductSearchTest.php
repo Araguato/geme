@@ -11,6 +11,9 @@ use App\Models\Role;
 use App\Models\StockItem;
 use App\Models\Supplier;
 use App\Models\SupplierInvoice;
+use App\Models\Unit;
+use App\Models\Warehouse;
+use App\Models\Location;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -212,5 +215,109 @@ class SupplierInvoiceProductSearchTest extends TestCase
     {
         $this->actingAs($this->user('admin'))->get('/supplier-invoices/create')->assertOk()
             ->assertSee('id="sum-total"', false);
+    }
+
+    public function test_cost_is_required_and_must_be_positive(): void
+    {
+        $admin = $this->user('admin');
+        $party = Party::create(['name' => 'Proveedor', 'is_active' => true]);
+        $supplier = Supplier::create(['party_id' => $party->id]);
+        $product = $this->product('Arroz', ['is_stock_tracked' => true]);
+
+        $base = ['supplier_id' => $supplier->id, 'date' => now()->toDateString(), 'currency' => 'USD', 'doc_type' => 'FC', 'status' => 'pendiente'];
+
+        foreach (['', null, 0, '0'] as $cost) {
+            $this->actingAs($admin)->post('/supplier-invoices', $base + [
+                'items' => [['product_id' => $product->id, 'quantity' => 2, 'unit_cost' => $cost, 'tax_rate' => 16]],
+            ])->assertSessionHasErrors('items.0.unit_cost');
+        }
+
+        $this->assertSame(0, SupplierInvoice::count());
+        $this->assertEquals(0, (float) StockItem::where('product_id', $product->id)->sum('quantity'));
+    }
+
+    public function test_form_offers_unit_and_vat_menus_with_16_percent_by_default(): void
+    {
+        Unit::create(['code' => 'KG', 'name' => 'Kilogramo', 'category' => 'peso', 'is_active' => true]);
+        Unit::create(['code' => 'UND', 'name' => 'Unidad', 'category' => 'pieza', 'is_active' => true]);
+
+        $this->actingAs($this->user('admin'))->get('/supplier-invoices/create')->assertOk()
+            ->assertSee('<select name="items[0][unit]"', false)
+            ->assertSee('<option value="kg"', false)
+            ->assertSee('<option value="unidad" selected>', false)
+            ->assertSee('<select name="items[0][tax_rate]"', false)
+            ->assertSee('<option value="16" selected>', false)
+            ->assertSee('<option value="8"', false)
+            ->assertSee('0 % · Exento');
+    }
+
+    public function test_edit_form_keeps_the_saved_vat_and_unit(): void
+    {
+        Unit::create(['code' => 'KG', 'name' => 'Kilogramo', 'category' => 'peso', 'is_active' => true]);
+        $admin = $this->user('admin');
+        $party = Party::create(['name' => 'Proveedor', 'is_active' => true]);
+        $supplier = Supplier::create(['party_id' => $party->id]);
+        $product = $this->product('Queso', ['is_stock_tracked' => true]);
+
+        $this->actingAs($admin)->post('/supplier-invoices', [
+            'supplier_id' => $supplier->id, 'date' => now()->toDateString(), 'currency' => 'USD', 'doc_type' => 'FC', 'status' => 'pendiente',
+            'items' => [['product_id' => $product->id, 'quantity' => 2, 'unit' => 'kg', 'unit_cost' => 5, 'tax_rate' => 8]],
+        ])->assertSessionHasNoErrors();
+
+        $invoice = SupplierInvoice::latest('id')->firstOrFail();
+        $html = $this->actingAs($admin)->get("/supplier-invoices/{$invoice->id}/edit")->assertOk()->getContent();
+
+        // Solo el menú del renglón (el de la ventana de producto nuevo propone 16 % aparte)
+        preg_match('/<select name="items\[0\]\[tax_rate\]".*?<\/select>/s', $html, $tax);
+        $this->assertStringContainsString('<option value="8" selected>', $tax[0]);
+        $this->assertStringNotContainsString('<option value="16" selected>', $tax[0]);
+
+        preg_match('/<select name="items\[0\]\[unit\]".*?<\/select>/s', $html, $unit);
+        $this->assertStringContainsString('<option value="kg" selected>', $unit[0]);
+    }
+
+    public function test_search_suggests_a_cost_but_never_uses_the_sale_price_as_cost(): void
+    {
+        $admin = $this->user('admin');
+        $party = Party::create(['name' => 'Proveedor', 'is_active' => true]);
+        $supplier = Supplier::create(['party_id' => $party->id]);
+        $warehouse = Warehouse::create(['code' => 'MAIN', 'name' => 'Principal', 'is_active' => true]);
+        $location = Location::create(['warehouse_id' => $warehouse->id, 'code' => 'G', 'name' => 'General', 'is_active' => true]);
+
+        // Importado: solo precio de venta, sin costo ni ubicación
+        $onlyPrice = $this->product('Solo precio', ['price' => 12.5]);
+        $withCost = $this->product('Con costo', ['price' => 9, 'cost' => 4]);
+        $withStock = $this->product('Con stock', ['price' => 9, 'is_stock_tracked' => true]);
+        StockItem::create(['product_id' => $withStock->id, 'warehouse_id' => $warehouse->id, 'location_id' => $location->id, 'quantity' => 10, 'average_cost' => 3.2]);
+        $bought = $this->product('Ya comprado', ['price' => 9, 'cost' => 4, 'is_stock_tracked' => true]);
+
+        $this->actingAs($admin)->post('/supplier-invoices', [
+            'supplier_id' => $supplier->id, 'date' => now()->toDateString(), 'currency' => 'USD', 'doc_type' => 'FC', 'status' => 'pendiente',
+            'items' => [['product_id' => $bought->id, 'quantity' => 1, 'unit_cost' => 5.5, 'tax_rate' => 16]],
+        ])->assertSessionHasNoErrors();
+
+        $by = fn (string $q, string $currency = 'USD') => collect(
+            $this->actingAs($admin)->getJson(route('supplier-invoices.products.search', ['q' => $q, 'currency' => $currency]))->assertOk()->json('products')
+        )->first();
+
+        $p = $by('Solo precio');
+        $this->assertNull($p['suggested_cost']);          // el precio de venta no se usa como costo
+        $this->assertEquals(12.5, $p['price']);           // pero se ofrece como referencia
+
+        $p = $by('Con costo');
+        $this->assertEquals(4.0, $p['suggested_cost']);
+        $this->assertSame('costo del producto', $p['cost_source']);
+
+        $p = $by('Con stock');
+        $this->assertEquals(3.2, $p['suggested_cost']);
+        $this->assertSame('costo promedio', $p['cost_source']);
+
+        $p = $by('Ya comprado');
+        $this->assertEquals(5.5, $p['suggested_cost']);   // la última compra manda
+        $this->assertSame('última compra', $p['cost_source']);
+
+        // En una factura en Bs no se sugieren costos en USD
+        $this->assertNull($by('Con costo', 'VES')['suggested_cost']);
+        $this->assertNull($by('Ya comprado', 'VES')['suggested_cost']);
     }
 }

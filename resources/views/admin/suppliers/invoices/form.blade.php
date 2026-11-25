@@ -14,6 +14,9 @@
     @endif
 
     @php
+        $unitOptionsHtml = collect($unitOptions)->map(fn ($u) => '<option value="' . e($u['value']) . '">' . e($u['label']) . '</option>')->implode('');
+        $taxOptionsHtml = collect($taxOptions)->map(fn ($label, $rate) => '<option value="' . e($rate) . '"' . ((string) $rate === (string) \App\Http\Controllers\SupplierInvoiceController::DEFAULT_TAX_RATE ? ' selected' : '') . '>' . e($label) . '</option>')->implode('');
+
         $items = old('items', $invoice->relationLoaded('items')
             ? $invoice->items->map(fn ($item) => [
                 'product_id' => $item->product_id,
@@ -200,23 +203,37 @@
                                    value="{{ $row['description'] ?? '' }}">
                         </td>
                         <td>
-                            <input type="text" name="items[{{ $index }}][unit]" class="form-control form-control-sm"
-                                   value="{{ $row['unit'] ?? '' }}">
+                            @php($rowUnit = $row['unit'] ?? 'unidad')
+                            <select name="items[{{ $index }}][unit]" class="form-select form-select-sm">
+                                @php($unitKnown = collect($unitOptions)->contains('value', $rowUnit))
+                                @unless($unitKnown)
+                                    <option value="{{ $rowUnit }}" selected>{{ $rowUnit }}</option>
+                                @endunless
+                                @foreach($unitOptions as $u)
+                                    <option value="{{ $u['value'] }}" @selected($rowUnit === $u['value'])>{{ $u['label'] }}</option>
+                                @endforeach
+                            </select>
                         </td>
                         <td>
-                            <input type="number" name="items[{{ $index }}][quantity]" step="0.0001" min="0"
+                            <input type="number" name="items[{{ $index }}][quantity]" step="0.0001" min="0.0001" required
                                    class="form-control form-control-sm"
                                    value="{{ $row['quantity'] ?? '' }}">
                         </td>
                         <td>
-                            <input type="number" name="items[{{ $index }}][unit_cost]" step="0.0001" min="0"
+                            <input type="number" name="items[{{ $index }}][unit_cost]" step="0.0001" min="0.0001" required
                                    class="form-control form-control-sm"
                                    value="{{ $row['unit_cost'] ?? '' }}">
                         </td>
                         <td>
-                            <input type="number" name="items[{{ $index }}][tax_rate]" step="0.0001" min="0"
-                                   class="form-control form-control-sm"
-                                   value="{{ $row['tax_rate'] ?? '' }}">
+                            @php($rowRate = (isset($row['tax_rate']) && $row['tax_rate'] !== '') ? (float) $row['tax_rate'] : (float) \App\Http\Controllers\SupplierInvoiceController::DEFAULT_TAX_RATE)
+                            <select name="items[{{ $index }}][tax_rate]" class="form-select form-select-sm">
+                                @unless(array_key_exists((string) (int) $rowRate, $taxOptions) && (float) (int) $rowRate === $rowRate)
+                                    <option value="{{ $rowRate }}" selected>{{ rtrim(rtrim(number_format($rowRate, 2, '.', ''), '0'), '.') }} %</option>
+                                @endunless
+                                @foreach($taxOptions as $rate => $label)
+                                    <option value="{{ $rate }}" @selected((float) $rate === $rowRate)>{{ $label }}</option>
+                                @endforeach
+                            </select>
                         </td>
                         <td>
                             <input type="number" name="items[{{ $index }}][tax_amount]" step="0.01" min="0"
@@ -287,7 +304,12 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Unidad</label>
-                            <input type="text" name="default_unit" class="form-control" maxlength="20" placeholder="und, kg…">
+                            <select name="default_unit" class="form-select">
+                                <option value="">—</option>
+                                @foreach($unitOptions as $u)
+                                    <option value="{{ $u['value'] }}" @selected($u['value'] === 'unidad')>{{ $u['label'] }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Costo</label>
@@ -299,7 +321,11 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">IVA %</label>
-                            <input type="number" name="tax_rate" class="form-control" step="0.01" min="0" max="100">
+                            <select name="tax_rate" class="form-select">
+                                @foreach($taxOptions as $rate => $label)
+                                    <option value="{{ $rate }}" @selected((string) $rate === '16')>{{ $label }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="col-md-8 d-flex align-items-end">
                             <div class="form-check">
@@ -326,6 +352,9 @@
         const addButton = document.getElementById('add-item-row');
         let rowIndex = {{ count($items) }};
 
+        const unitOptionsHtml = @json($unitOptionsHtml);
+        const taxOptionsHtml = @json($taxOptionsHtml);
+
         function buildRow(index) {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -337,10 +366,10 @@
                     </div>
                 </td>
                 <td><input type="text" name="items[${index}][description]" class="form-control form-control-sm"></td>
-                <td><input type="text" name="items[${index}][unit]" class="form-control form-control-sm"></td>
-                <td><input type="number" name="items[${index}][quantity]" step="0.0001" min="0" class="form-control form-control-sm"></td>
-                <td><input type="number" name="items[${index}][unit_cost]" step="0.0001" min="0" class="form-control form-control-sm"></td>
-                <td><input type="number" name="items[${index}][tax_rate]" step="0.0001" min="0" class="form-control form-control-sm"></td>
+                <td><select name="items[${index}][unit]" class="form-select form-select-sm">${unitOptionsHtml}</select></td>
+                <td><input type="number" name="items[${index}][quantity]" step="0.0001" min="0.0001" required class="form-control form-control-sm"></td>
+                <td><input type="number" name="items[${index}][unit_cost]" step="0.0001" min="0.0001" required class="form-control form-control-sm"></td>
+                <td><select name="items[${index}][tax_rate]" class="form-select form-select-sm">${taxOptionsHtml}</select></td>
                 <td><input type="number" name="items[${index}][tax_amount]" step="0.01" min="0" class="form-control form-control-sm"></td>
                 <td><input type="number" name="items[${index}][subtotal]" step="0.01" min="0" class="form-control form-control-sm"></td>
                 <td><input type="number" name="items[${index}][total]" step="0.01" min="0" class="form-control form-control-sm"></td>
@@ -472,12 +501,28 @@
                 if (el && value !== null && value !== undefined && value !== '' && el.value === '') el.value = value;
             };
             setIfEmpty('description', p.name);
-            setIfEmpty('unit', p.default_unit);
-            setIfEmpty('unit_cost', p.cost);
-            setIfEmpty('tax_rate', p.tax_rate);
+            const costInput = field(tr, 'unit_cost');
+            setIfEmpty('unit_cost', p.suggested_cost);
+            if (costInput) {
+                costInput.title = p.suggested_cost ? 'Sugerido: ' + p.cost_source : '';
+                // Sin costo conocido se deja vacío (obligatorio): el precio de venta es solo referencia
+                costInput.placeholder = p.suggested_cost ? '' : (p.price ? 'venta ' + Number(p.price).toFixed(2) : 'costo');
+            }
+            // Unidad e IVA son menús: se ajustan solo si el producto trae un valor que exista en la lista
+            const pick = (name, value) => {
+                const el = field(tr, name);
+                if (!el || value === null || value === undefined || value === '') return;
+                const wanted = String(value).toLowerCase();
+                const opt = Array.from(el.options).find((o) => o.value.toLowerCase() === wanted
+                    || o.textContent.trim().toLowerCase().startsWith(wanted));
+                if (opt) el.value = opt.value;
+            };
+            pick('unit', p.default_unit);
+            if (Number(p.tax_rate) > 0) pick('tax_rate', Number(p.tax_rate));
             recalcRow(tr);
             closePanel();
-            (field(tr, 'quantity') || input).focus();
+            const next = (costInput && costInput.value === '' && field(tr, 'quantity').value !== '') ? costInput : field(tr, 'quantity');
+            (next || input).focus();
         }
 
         function renderResults(tr, products, term) {
@@ -486,7 +531,9 @@
                 const b = document.createElement('button');
                 b.type = 'button';
                 b.className = 'list-group-item list-group-item-action py-1';
-                const cost = p.cost ? ' · costo ' + Number(p.cost).toFixed(2) : '';
+                const cost = p.suggested_cost
+                    ? ' · costo ' + Number(p.suggested_cost).toFixed(2) + ' (' + p.cost_source + ')'
+                    : ' · sin costo previo' + (p.price ? ', venta ' + Number(p.price).toFixed(2) : '');
                 b.innerHTML = '<div class="fw-semibold"></div><div class="small text-muted"></div>';
                 b.firstChild.textContent = p.name;
                 b.lastChild.textContent = (p.sku ? 'SKU ' + p.sku : 'sin SKU') + (p.default_unit ? ' · ' + p.default_unit : '') + cost;
@@ -515,7 +562,8 @@
             const term = input.value.trim();
             const mine = ++seq;
             try {
-                const res = await fetch(searchUrl + '?q=' + encodeURIComponent(term), { headers: { 'Accept': 'application/json' } });
+                const currency = (form.querySelector('[name="currency"]') || {}).value === 'VES' ? 'VES' : 'USD';
+                const res = await fetch(searchUrl + '?q=' + encodeURIComponent(term) + '&currency=' + currency, { headers: { 'Accept': 'application/json' } });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 if (mine !== seq || activeInput !== input) return;
@@ -606,7 +654,7 @@
             const unit = field(tr, 'unit'); const cost = field(tr, 'unit_cost'); const tax = field(tr, 'tax_rate');
             if (unit && unit.value) qForm.elements.default_unit.value = unit.value;
             if (cost && cost.value) qForm.elements.cost.value = cost.value;
-            if (tax && tax.value) qForm.elements.tax_rate.value = tax.value;
+            if (tax && tax.value) qForm.elements.tax_rate.value = String(parseFloat(tax.value));
             modal.show();
         }
 
