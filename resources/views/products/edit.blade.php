@@ -110,7 +110,7 @@
         <div class="row g-3">
             <div class="col-md-4" id="prod-cost">
                 <label class="form-label">Costo ($)</label>
-                <input type="number" step="0.01" min="0" name="cost" id="cost" class="form-control" value="{{ old('cost', $product->cost) }}">
+                <input type="number" step="0.000001" min="0" name="cost" id="cost" class="form-control" value="{{ old('cost', $product->cost) }}">
             </div>
             <div class="col-md-4" id="prod-margin">
                 <label class="form-label">Margen de ganancia (%)</label>

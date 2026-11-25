@@ -145,11 +145,11 @@ class SupplierInvoiceProductController extends Controller
         $out = [];
         foreach ($ids as $id) {
             if ((float) ($last[$id] ?? 0) > 0) {
-                $out[$id] = ['suggested_cost' => round((float) $last[$id], 4), 'cost_source' => 'última compra'];
+                $out[$id] = ['suggested_cost' => round((float) $last[$id], 6), 'cost_source' => 'última compra'];
             } elseif ($currency === 'USD' && (float) ($products[$id] ?? 0) > 0) {
-                $out[$id] = ['suggested_cost' => round((float) $products[$id], 4), 'cost_source' => 'costo del producto'];
+                $out[$id] = ['suggested_cost' => round((float) $products[$id], 6), 'cost_source' => 'costo del producto'];
             } elseif ((float) ($avg[$id] ?? 0) > 0) {
-                $out[$id] = ['suggested_cost' => round((float) $avg[$id], 4), 'cost_source' => 'costo promedio'];
+                $out[$id] = ['suggested_cost' => round((float) $avg[$id], 6), 'cost_source' => 'costo promedio'];
             } else {
                 $out[$id] = ['suggested_cost' => null, 'cost_source' => null];
             }

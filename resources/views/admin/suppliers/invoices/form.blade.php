@@ -220,7 +220,7 @@
                                    value="{{ $row['quantity'] ?? '' }}">
                         </td>
                         <td>
-                            <input type="number" name="items[{{ $index }}][unit_cost]" step="0.0001" min="0.0001" required
+                            <input type="number" name="items[{{ $index }}][unit_cost]" step="0.000001" min="0.000001" required
                                    class="form-control form-control-sm"
                                    value="{{ $row['unit_cost'] ?? '' }}">
                         </td>
@@ -313,7 +313,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Costo</label>
-                            <input type="number" name="cost" class="form-control" step="0.0001" min="0">
+                            <input type="number" name="cost" class="form-control" step="0.000001" min="0">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Precio de venta</label>
@@ -368,7 +368,7 @@
                 <td><input type="text" name="items[${index}][description]" class="form-control form-control-sm"></td>
                 <td><select name="items[${index}][unit]" class="form-select form-select-sm">${unitOptionsHtml}</select></td>
                 <td><input type="number" name="items[${index}][quantity]" step="0.0001" min="0.0001" required class="form-control form-control-sm"></td>
-                <td><input type="number" name="items[${index}][unit_cost]" step="0.0001" min="0.0001" required class="form-control form-control-sm"></td>
+                <td><input type="number" name="items[${index}][unit_cost]" step="0.000001" min="0.000001" required class="form-control form-control-sm"></td>
                 <td><select name="items[${index}][tax_rate]" class="form-select form-select-sm">${taxOptionsHtml}</select></td>
                 <td><input type="number" name="items[${index}][tax_amount]" step="0.01" min="0" class="form-control form-control-sm"></td>
                 <td><input type="number" name="items[${index}][subtotal]" step="0.01" min="0" class="form-control form-control-sm"></td>
