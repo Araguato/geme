@@ -66,12 +66,16 @@ class PurchaseService
                 $itemsCollection->push($invoiceItem);
 
                 if ($productId) {
+                    // El inventario valora en USD: un costo en Bs se convierte con la tasa de emisión
+                    $stockUnitCost = ($invoice->currency === 'VES' && (float) $invoice->bcv_rate_at_issue > 0)
+                        ? $unitCost / (float) $invoice->bcv_rate_at_issue
+                        : $unitCost;
                     $product = Product::find($productId);
                     if ($product && $product->is_stock_tracked) {
                         InventoryService::recordPurchaseEntry(
                             product: $product,
                             quantity: $quantity,
-                            unitCost: $unitCost,
+                            unitCost: $stockUnitCost,
                             invoice: $invoice,
                             userId: $userId,
                             unitOverride: $invoiceItem->unit,

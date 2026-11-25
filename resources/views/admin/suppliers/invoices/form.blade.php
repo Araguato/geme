@@ -58,7 +58,7 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">Fecha *</label>
-                <input type="date" name="date" class="form-control" required
+                <input type="date" name="date" id="invoice-date" class="form-control" required
                        value="{{ old('date', optional($invoice->date)->format('Y-m-d') ?? now()->format('Y-m-d')) }}">
             </div>
             <div class="col-md-3">
@@ -100,7 +100,7 @@
             <div class="col-md-2">
                 <label class="form-label">Moneda</label>
                 @php($cur = old('currency', $invoice->currency ?? 'USD'))
-                <select name="currency" class="form-select">
+                <select name="currency" id="invoice-currency" class="form-select">
                     <option value="USD" @selected($cur === 'USD')>USD</option>
                     <option value="VES" @selected($cur === 'VES')>Bs</option>
                 </select>
@@ -134,9 +134,10 @@
 
         <div class="row g-3 mb-3">
             <div class="col-md-3">
-                <label class="form-label">Tasa BCV usada</label>
-                <input type="number" name="bcv_rate_at_issue" step="0.000001" min="0" class="form-control"
+                <label class="form-label">Tasa BCV de la fecha de emisión</label>
+                <input type="number" name="bcv_rate_at_issue" id="invoice-rate" step="0.000001" min="0" class="form-control"
                        value="{{ old('bcv_rate_at_issue', $invoice->bcv_rate_at_issue ?: $bcvRate) }}">
+                <div class="form-text" id="rate-hint">Solo vale para esta factura: no cambia la tasa del TPV ni los precios de venta.</div>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Fuente de la tasa</label>
@@ -176,7 +177,7 @@
                     <th>Descripción</th>
                     <th style="width: 110px;">Unidad</th>
                     <th style="width: 130px;">Cantidad</th>
-                    <th style="width: 150px;">Costo unitario</th>
+                    <th style="width: 150px;">Costo unitario <span class="cur-label"></span></th>
                     <th style="width: 130px;">IVA %</th>
                     <th style="width: 150px;">Impuesto</th>
                     <th style="width: 150px;">Subtotal</th>
@@ -267,7 +268,8 @@
             <table class="table table-sm table-borderless w-auto mb-0">
                 <tr><td class="text-end text-muted">Subtotal</td><td class="text-end fw-semibold" id="sum-subtotal">0.00</td></tr>
                 <tr><td class="text-end text-muted">IVA</td><td class="text-end fw-semibold" id="sum-tax">0.00</td></tr>
-                <tr><td class="text-end">Total</td><td class="text-end fw-bold fs-5" id="sum-total">0.00</td></tr>
+                <tr><td class="text-end">Total <span class="cur-label"></span></td><td class="text-end fw-bold fs-5" id="sum-total">0.00</td></tr>
+                <tr id="sum-usd-row" class="d-none"><td class="text-end text-muted">Equivale a USD</td><td class="text-end fw-semibold" id="sum-usd">0.00</td></tr>
             </table>
         </div>
 
@@ -417,7 +419,34 @@
             document.getElementById('sum-subtotal').textContent = fmt(sub);
             document.getElementById('sum-tax').textContent = fmt(tax);
             document.getElementById('sum-total').textContent = fmt(tot);
+
+            // Factura en Bs: equivalente en USD con la tasa de la fecha de emisión
+            const rate = num(document.getElementById('invoice-rate')) || 0;
+            const inBs = document.getElementById('invoice-currency').value === 'VES';
+            document.getElementById('sum-usd-row').classList.toggle('d-none', !inBs);
+            document.getElementById('sum-usd').textContent = rate > 0 ? fmt(tot / rate) : '—';
+            document.querySelectorAll('.cur-label').forEach((el) => { el.textContent = inBs ? '(Bs)' : '(USD)'; });
         }
+
+        // La tasa se sugiere según la fecha de emisión (histórico de Divisas); si se escribe a mano no se pisa
+        const rateHistory = @json($rateHistory ?? []);
+        const dateInput = document.getElementById('invoice-date');
+        const rateInput = document.getElementById('invoice-rate');
+        let rateEdited = {{ $invoice->exists ? 'true' : 'false' }};
+        rateInput.addEventListener('input', () => { rateEdited = true; updateSummary(); });
+        document.getElementById('invoice-currency').addEventListener('change', updateSummary);
+        dateInput.addEventListener('change', () => {
+            const hint = document.getElementById('rate-hint');
+            const dates = Object.keys(rateHistory).filter((d) => d <= dateInput.value).sort();
+            if (rateEdited || !dates.length) {
+                if (!rateEdited) hint.textContent = 'No hay tasa guardada para esa fecha: escríbela tal como figura en la factura. Solo vale para esta factura.';
+                return;
+            }
+            const d = dates[dates.length - 1];
+            rateInput.value = rateHistory[d];
+            hint.textContent = 'Tasa del ' + d + ' tomada de Divisas. Solo vale para esta factura: no cambia la tasa del TPV.';
+            updateSummary();
+        });
 
         function recalcRow(tr) {
             const q = num(field(tr, 'quantity'));

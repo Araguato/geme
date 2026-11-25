@@ -320,4 +320,51 @@ class SupplierInvoiceProductSearchTest extends TestCase
         $this->assertNull($by('Con costo', 'VES')['suggested_cost']);
         $this->assertNull($by('Ya comprado', 'VES')['suggested_cost']);
     }
+
+    public function test_invoice_in_bs_uses_the_emission_rate_and_not_todays_rate(): void
+    {
+        $admin = $this->user('admin');
+        $party = Party::create(['name' => 'Mia Isabella', 'is_active' => true]);
+        $supplier = Supplier::create(['party_id' => $party->id]);
+        $colgate = $this->product('Colgate', ['is_stock_tracked' => true]);
+        $papel = $this->product('Papel higiénico', ['is_stock_tracked' => true]);
+        \App\Models\Setting::set('bcv_rate', 924.3534); // tasa de hoy (TPV): no debe cambiar
+
+        // Factura real: renglones en Bs sin IVA, tasa de la fecha de emisión 917,7751
+        $this->actingAs($admin)->post('/supplier-invoices', [
+            'supplier_id' => $supplier->id, 'date' => now()->toDateString(), 'currency' => 'VES', 'doc_type' => 'FC',
+            'status' => 'pendiente', 'bcv_rate_at_issue' => '917.7751',
+            'items' => [
+                ['product_id' => $colgate->id, 'quantity' => 12, 'unit_cost' => '595.009167', 'tax_rate' => 16, 'tax_amount' => '', 'subtotal' => '', 'total' => ''],
+                ['product_id' => $papel->id, 'quantity' => 12, 'unit_cost' => '1021.667500', 'tax_rate' => 16, 'tax_amount' => '', 'subtotal' => '', 'total' => ''],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $invoice = SupplierInvoice::latest('id')->firstOrFail();
+        $this->assertEquals(19400.12, round((float) $invoice->total_items, 2));
+        $this->assertEquals(3104.02, round((float) $invoice->total_tax, 2));
+        $this->assertEquals(22504.14, round((float) $invoice->amount_bs, 2));
+        $this->assertEquals(24.52, (float) $invoice->amount_usd);
+        $this->assertEquals(917.7751, (float) $invoice->bcv_rate_at_issue);
+
+        // El inventario se valora en USD con la tasa de emisión
+        $this->assertEqualsWithDelta(0.648, (float) StockItem::where('product_id', $colgate->id)->value('average_cost'), 0.001);
+        // La tasa global del TPV no se tocó
+        $this->assertEquals(924.3534, (float) \App\Models\Setting::get('bcv_rate'));
+
+        $this->actingAs($admin)->get("/supplier-invoices/{$invoice->id}")->assertOk()->assertSee('Equivale a USD');
+    }
+
+    public function test_invoice_in_bs_requires_the_emission_rate(): void
+    {
+        $admin = $this->user('admin');
+        $party = Party::create(['name' => 'Proveedor', 'is_active' => true]);
+        $supplier = Supplier::create(['party_id' => $party->id]);
+        \App\Models\Setting::set('bcv_rate', 0);
+
+        $this->actingAs($admin)->post('/supplier-invoices', [
+            'supplier_id' => $supplier->id, 'date' => now()->toDateString(), 'currency' => 'VES', 'doc_type' => 'FC',
+            'items' => [['quantity' => 1, 'unit_cost' => 100, 'description' => 'x']],
+        ])->assertSessionHasErrors('bcv_rate_at_issue');
+    }
 }

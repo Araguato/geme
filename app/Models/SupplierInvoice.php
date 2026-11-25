@@ -109,8 +109,11 @@ class SupplierInvoice extends Model
             $this->amount_usd = $this->total_amount;
         }
 
-        if ((float) $this->amount_bs <= 0 && $this->currency === 'VES' && $this->bcv_rate_at_issue > 0) {
-            $this->amount_bs = $this->total_amount * $this->bcv_rate_at_issue;
+        // Factura en bolívares: los renglones están en Bs tal como vienen impresos y el
+        // equivalente en USD se calcula con la tasa de la fecha de emisión (no la de hoy).
+        if ($this->currency === 'VES' && (float) $this->bcv_rate_at_issue > 0 && (float) $this->total_amount > 0) {
+            $this->amount_bs = round((float) $this->total_amount, 2);
+            $this->amount_usd = round((float) $this->total_amount / (float) $this->bcv_rate_at_issue, 2);
         }
     }
 }

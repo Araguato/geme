@@ -112,11 +112,17 @@
                         </tbody>
                         <tfoot>
                         <tr class="table-light">
-                            <th colspan="6" class="text-end">Totales</th>
+                            <th colspan="6" class="text-end">Totales ({{ $invoice->currency === 'VES' ? 'Bs' : 'USD' }})</th>
                             <th class="text-end">{{ number_format($invoice->total_tax, 2) }}</th>
                             <th class="text-end">{{ number_format($invoice->total_items, 2) }}</th>
                             <th class="text-end">{{ number_format($invoice->total_amount, 2) }}</th>
                         </tr>
+                        @if($invoice->currency === 'VES' && $invoice->bcv_rate_at_issue > 0)
+                            <tr>
+                                <th colspan="8" class="text-end">Equivale a USD (tasa {{ number_format($invoice->bcv_rate_at_issue, 6, ',', '.') }})</th>
+                                <th class="text-end">{{ number_format($invoice->total_amount / $invoice->bcv_rate_at_issue, 2) }}</th>
+                            </tr>
+                        @endif
                         </tfoot>
                     </table>
                 </div>

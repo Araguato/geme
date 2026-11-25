@@ -59,6 +59,7 @@ class SupplierInvoiceController extends Controller
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'unitOptions' => $this->unitOptions(),
             'taxOptions' => self::TAX_OPTIONS,
+            'rateHistory' => $this->rateHistory(),
             'mode' => 'create',
         ]);
     }
@@ -96,6 +97,7 @@ class SupplierInvoiceController extends Controller
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'unitOptions' => $this->unitOptions(),
             'taxOptions' => self::TAX_OPTIONS,
+            'rateHistory' => $this->rateHistory(),
             // Al editar se mantiene el depósito donde entró la mercancía
             'selectedWarehouseId' => StockMovement::where('reference_type', 'supplier_invoice')
                 ->where('reference_id', $supplierInvoice->id)
@@ -131,6 +133,15 @@ class SupplierInvoiceController extends Controller
             'invoice' => $supplierInvoice,
             'bcvRate' => $bcvRate,
         ]);
+    }
+
+    /** Tasas BCV guardadas por fecha (Y-m-d => Bs/USD), para sugerir la de la fecha de emisión. */
+    protected function rateHistory(): array
+    {
+        return \App\Models\ExchangeRate::query()
+            ->orderByDesc('rate_date')->limit(400)->get(['rate_date', 'bs_per_usd'])
+            ->mapWithKeys(fn ($r) => [$r->rate_date->toDateString() => (float) $r->bs_per_usd])
+            ->all();
     }
 
     /** @return array<int, array{value: string, label: string}> */
@@ -189,6 +200,12 @@ class SupplierInvoiceController extends Controller
 
         // Normalizar montos según moneda y tasa
         $data['bcv_rate_at_issue'] = $data['bcv_rate_at_issue'] ?? $bcvRate;
+
+        if ($data['currency'] === 'VES' && (float) $data['bcv_rate_at_issue'] <= 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'bcv_rate_at_issue' => 'Una factura en Bs necesita la tasa BCV de la fecha de emisión.',
+            ]);
+        }
 
         $amountUsd = (float) ($data['amount_usd'] ?? 0);
         $amountBs = (float) ($data['amount_bs'] ?? 0);
