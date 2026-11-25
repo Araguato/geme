@@ -30,6 +30,7 @@
                     <div class="card-body">
                         <h5 class="card-title">
                             {{ $product->name }}
+                            @unless($product->is_active)<span class="badge bg-danger ms-1">Inactivo</span>@endunless
                             @if($product->isVariant())
                                 @foreach($product->variant_attributes ?? [] as $attr => $val)
                                     <span class="badge bg-secondary ms-1">{{ $val }}</span>
@@ -72,4 +73,20 @@
             </div>
         @endforeach
     </div>
+<script>
+    // Búsqueda al escribir (sin pulsar Enter ni el botón): se envía el formulario tras una pausa corta
+    (function () {
+        const input = document.querySelector('input[name="search"]');
+        if (!input || !input.form) return;
+        let timer = null;
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () { input.form.submit(); }, 600);
+        });
+        if (input.value) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+    })();
+</script>
 @endsection

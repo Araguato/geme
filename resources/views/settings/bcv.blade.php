@@ -8,7 +8,7 @@
     @csrf
     <div class="mb-3">
         <label class="form-label">Tasa BCV (Bs / USD)</label>
-        <input type="number" step="0.0001" name="bcv_rate" class="form-control" value="{{ old('bcv_rate', $bcvRate) }}" required>
+        <input type="number" step="0.000001" min="0.000001" name="bcv_rate" class="form-control" value="{{ old('bcv_rate', $bcvRate) }}" required>
     </div>
     <button type="submit" class="btn btn-primary">Guardar tasa</button>
 </form>
@@ -40,7 +40,7 @@
                             @foreach($rates->reverse() as $row)
                                 <tr>
                                     <td>{{ $row->rate_date }}</td>
-                                    <td class="text-end">{{ number_format((float) $row->bs_per_usd, 4) }}</td>
+                                    <td class="text-end">{{ number_format((float) $row->bs_per_usd, 6, ",", ".") }}</td>
                                 </tr>
                             @endforeach
                             </tbody>

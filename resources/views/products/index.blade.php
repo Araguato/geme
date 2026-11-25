@@ -116,6 +116,22 @@
 </table>
 
 <script>
+    // Búsqueda al escribir (sin pulsar Enter ni el botón): se envía el formulario tras una pausa corta
+    (function () {
+        const input = document.querySelector('input[name="search"]');
+        if (!input || !input.form) return;
+        let timer = null;
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () { input.form.submit(); }, 600);
+        });
+        if (input.value) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+    })();
+</script>
+<script>
     window.GEME_TOUR_STEPS = [
         {
             intro: 'Aquí administras los productos del catálogo (precios, códigos, categoría y estado).'

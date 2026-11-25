@@ -47,7 +47,7 @@ class SettingController extends Controller
         $this->authorizeBcv();
 
         $data = $request->validate([
-            'bcv_rate' => 'required|numeric|min:0.0001',
+            'bcv_rate' => 'required|numeric|min:0.000001',
         ]);
 
         Setting::set('bcv_rate', $data['bcv_rate']);

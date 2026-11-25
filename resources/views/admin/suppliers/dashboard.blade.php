@@ -9,7 +9,7 @@
                 <div class="card-body">
                     <div class="text-muted">Total facturado (USD)</div>
                     <div class="fs-3">{{ number_format($totalUsd, 2) }}</div>
-                    <div class="text-muted small">Equivalente Bs (BCV {{ number_format($bcvRate, 2) }}):
+                    <div class="text-muted small">Equivalente Bs (BCV {{ number_format($bcvRate, 6, ",", ".") }}):
                         {{ number_format($totalUsd * $bcvRate, 2) }}
                     </div>
                 </div>

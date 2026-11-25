@@ -14,7 +14,7 @@
     | Pagado: <strong>$ {{ number_format($totalPaid, 2) }}</strong>
     | Restante: <strong>$ {{ number_format($remaining, 2) }}</strong>
     @if($bcvRate > 0)
-        | Tasa BCV: <strong>{{ number_format($bcvRate, 2) }} Bs / USD</strong>
+        | Tasa BCV: <strong>{{ number_format($bcvRate, 6, ",", ".") }} Bs / USD</strong>
         @if(!is_null($remainingBs))
             | Restante en Bs: <strong>{{ number_format($remainingBs, 2) }} Bs</strong>
         @endif

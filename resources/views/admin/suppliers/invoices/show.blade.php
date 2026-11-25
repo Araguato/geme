@@ -38,7 +38,7 @@
             <div class="row mb-2">
                 <div class="col-md-4">
                     <div><strong>Moneda:</strong> {{ $invoice->currency }}</div>
-                    <div><strong>BCV emisión:</strong> {{ number_format($invoice->bcv_rate_at_issue, 6) }}</div>
+                    <div><strong>BCV emisión:</strong> {{ number_format($invoice->bcv_rate_at_issue, 6, ",", ".") }}</div>
                     <div><strong>Fuente tasa:</strong> {{ $invoice->currency_rate_source ?: '—' }}</div>
                 </div>
                 <div class="col-md-4">
@@ -51,7 +51,7 @@
                 <div class="col-md-4">
                     <div><strong>Pagado (USD equiv.):</strong> {{ number_format($invoice->paid_usd, 2) }}</div>
                     <div><strong>Saldo (USD):</strong> {{ number_format($invoice->remaining_usd, 2) }}</div>
-                    <div><strong>Saldo estimado en Bs (BCV actual {{ number_format($bcvRate, 2) }}):</strong></div>
+                    <div><strong>Saldo estimado en Bs (BCV actual {{ number_format($bcvRate, 6, ",", ".") }}):</strong></div>
                     <div>{{ number_format($invoice->remaining_usd * $bcvRate, 2) }} Bs</div>
                 </div>
             </div>
@@ -103,7 +103,7 @@
                                 <td class="text-end">{{ number_format($item->quantity, 4) }}</td>
                                 <td>{{ $item->unit ?: $item->product?->default_unit ?: '—' }}</td>
                                 <td class="text-end">{{ number_format($item->unit_cost, 2) }}</td>
-                                <td class="text-end">{{ number_format($item->tax_rate * 100, 2) }}</td>
+                                <td class="text-end">{{ number_format($item->tax_rate > 0 && $item->tax_rate < 1 ? $item->tax_rate * 100 : $item->tax_rate, 2) }}</td>
                                 <td class="text-end">{{ number_format($item->tax_amount, 2) }}</td>
                                 <td class="text-end">{{ number_format($item->subtotal, 2) }}</td>
                                 <td class="text-end">{{ number_format($item->total, 2) }}</td>
@@ -157,7 +157,7 @@
                 <td>{{ $payment->payment_date->format('d/m/Y') }}</td>
                 <td class="text-end">{{ $payment->amount_usd ? number_format($payment->amount_usd, 2) : '—' }}</td>
                 <td class="text-end">{{ $payment->amount_bs ? number_format($payment->amount_bs, 2) : '—' }}</td>
-                <td>{{ number_format($payment->bcv_rate_at_payment, 2) }}</td>
+                <td>{{ number_format($payment->bcv_rate_at_payment, 6, ",", ".") }}</td>
                 <td>{{ $payment->method ?: '—' }}</td>
                 <td>{{ $payment->notes ?: '—' }}</td>
             </tr>
@@ -185,7 +185,7 @@
         <div class="col-md-3">
             <label class="form-label">Monto en Bs</label>
             <input type="number" name="amount_bs" step="0.01" min="0" class="form-control">
-            <div class="form-text">BCV actual: {{ number_format($bcvRate, 2) }} Bs / USD</div>
+            <div class="form-text">BCV actual: {{ number_format($bcvRate, 6, ",", ".") }} Bs / USD</div>
         </div>
         <div class="col-md-3">
             <label class="form-label">BCV usado</label>

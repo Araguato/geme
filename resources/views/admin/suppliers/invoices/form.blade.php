@@ -114,7 +114,7 @@
                 <label class="form-label">Monto en Bs</label>
                 <input type="number" name="amount_bs" step="0.01" min="0" class="form-control"
                        value="{{ old('amount_bs', $invoice->amount_bs) }}">
-                <div class="form-text">BCV actual: {{ number_format($bcvRate, 2) }} Bs / USD</div>
+                <div class="form-text">BCV actual: {{ number_format($bcvRate, 6, ",", ".") }} Bs / USD</div>
             </div>
             <div class="col-md-2">
                 <label class="form-label">Retenciones</label>

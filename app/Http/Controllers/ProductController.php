@@ -62,7 +62,7 @@ class ProductController extends Controller
         $search = $request->query('search');
 
         $query = Product::with(['category', 'barcodes', 'mainImage', 'images', 'parent'])
-            ->where('is_active', true)
+            ->orderByDesc('is_active')
             ->orderBy('name');
 
         if ($search) {
