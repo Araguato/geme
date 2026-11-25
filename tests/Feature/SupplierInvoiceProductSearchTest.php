@@ -178,4 +178,39 @@ class SupplierInvoiceProductSearchTest extends TestCase
             ->assertSee('Atún en lata (ATU-01)', false)
             ->assertSee('value="' . $product->id . '"', false);
     }
+
+    public function test_blank_tax_fields_are_calculated_with_the_rate_in_percent(): void
+    {
+        $admin = $this->user('admin');
+        $party = Party::create(['name' => 'Proveedor', 'is_active' => true]);
+        $supplier = Supplier::create(['party_id' => $party->id]);
+        $product = $this->product('Galletas', ['is_stock_tracked' => true]);
+
+        // Como envía el formulario: campos vacíos para subtotal, impuesto y total
+        $this->actingAs($admin)->post('/supplier-invoices', [
+            'supplier_id' => $supplier->id, 'date' => now()->toDateString(), 'currency' => 'USD', 'doc_type' => 'FC', 'status' => 'pendiente',
+            'items' => [['product_id' => $product->id, 'quantity' => 12, 'unit_cost' => 2.5, 'tax_rate' => 16, 'tax_amount' => '', 'subtotal' => '', 'total' => '']],
+        ])->assertSessionHasNoErrors();
+
+        $invoice = SupplierInvoice::latest('id')->firstOrFail();
+        $item = $invoice->items()->firstOrFail();
+        $this->assertEquals(30.00, (float) $item->subtotal);
+        $this->assertEquals(4.80, (float) $item->tax_amount);
+        $this->assertEquals(34.80, (float) $item->total);
+        $this->assertEquals(34.80, (float) $invoice->total_amount);
+        $this->assertEquals(4.80, (float) $invoice->total_tax);
+
+        // Un importe escrito a mano se respeta
+        $this->actingAs($admin)->post('/supplier-invoices', [
+            'supplier_id' => $supplier->id, 'date' => now()->toDateString(), 'currency' => 'USD', 'doc_type' => 'FC', 'status' => 'pendiente',
+            'items' => [['product_id' => $product->id, 'quantity' => 1, 'unit_cost' => 10, 'tax_rate' => 16, 'tax_amount' => 1.5]],
+        ])->assertSessionHasNoErrors();
+        $this->assertEquals(1.5, (float) SupplierInvoice::latest('id')->first()->items()->first()->tax_amount);
+    }
+
+    public function test_form_has_live_totals_summary(): void
+    {
+        $this->actingAs($this->user('admin'))->get('/supplier-invoices/create')->assertOk()
+            ->assertSee('id="sum-total"', false);
+    }
 }

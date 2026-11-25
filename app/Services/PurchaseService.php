@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseService
 {
+    private static function filled(array $item, string $key): bool
+    {
+        return isset($item[$key]) && $item[$key] !== '';
+    }
+
     /**
      * Crea o actualiza una factura de proveedor con sus renglones y movimientos de inventario.
      */
@@ -39,9 +44,10 @@ class PurchaseService
                 $quantity = (float) Arr::get($item, 'quantity', 0);
                 $unitCost = (float) Arr::get($item, 'unit_cost', 0);
                 $taxRate = (float) Arr::get($item, 'tax_rate', 0);
-                $taxAmount = (float) Arr::get($item, 'tax_amount', $quantity * $unitCost * $taxRate);
-                $subtotal = (float) Arr::get($item, 'subtotal', $quantity * $unitCost);
-                $total = (float) Arr::get($item, 'total', $subtotal + $taxAmount);
+                // Lo que llegue vacío se calcula; el IVA se expresa en % (16 = 16 %)
+                $subtotal = self::filled($item, 'subtotal') ? (float) $item['subtotal'] : round($quantity * $unitCost, 2);
+                $taxAmount = self::filled($item, 'tax_amount') ? (float) $item['tax_amount'] : round($subtotal * $taxRate / 100, 2);
+                $total = self::filled($item, 'total') ? (float) $item['total'] : round($subtotal + $taxAmount, 2);
 
                 $invoiceItem = SupplierInvoiceItem::create([
                     'supplier_invoice_id' => $invoice->id,

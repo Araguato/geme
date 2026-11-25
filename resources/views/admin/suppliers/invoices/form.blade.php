@@ -242,9 +242,16 @@
             </table>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <button type="button" class="btn btn-outline-secondary" id="add-item-row">Agregar renglón</button>
-            <small class="text-muted">Los totales se recalculan automáticamente al guardar.</small>
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <button type="button" class="btn btn-outline-secondary" id="add-item-row">Agregar renglón</button>
+                <div class="small text-muted mt-2">Subtotal, impuesto y total del renglón se calculan al indicar cantidad, costo e IVA %; puedes corregirlos a mano.</div>
+            </div>
+            <table class="table table-sm table-borderless w-auto mb-0">
+                <tr><td class="text-end text-muted">Subtotal</td><td class="text-end fw-semibold" id="sum-subtotal">0.00</td></tr>
+                <tr><td class="text-end text-muted">IVA</td><td class="text-end fw-semibold" id="sum-tax">0.00</td></tr>
+                <tr><td class="text-end">Total</td><td class="text-end fw-bold fs-5" id="sum-total">0.00</td></tr>
+            </table>
         </div>
 
         <button type="submit" class="btn btn-primary">Guardar</button>
@@ -361,6 +368,62 @@
             }
         });
 
+
+        // ---------- Cálculo del renglón y resumen ----------
+        const num = (el) => {
+            if (!el || el.value === '') return null;
+            const n = parseFloat(el.value);
+            return Number.isFinite(n) ? n : null;
+        };
+        const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+        const fmt = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        function updateSummary() {
+            let sub = 0, tax = 0, tot = 0;
+            itemsBody.querySelectorAll('tr').forEach((tr) => {
+                sub += num(field(tr, 'subtotal')) || 0;
+                tax += num(field(tr, 'tax_amount')) || 0;
+                tot += num(field(tr, 'total')) || 0;
+            });
+            document.getElementById('sum-subtotal').textContent = fmt(sub);
+            document.getElementById('sum-tax').textContent = fmt(tax);
+            document.getElementById('sum-total').textContent = fmt(tot);
+        }
+
+        function recalcRow(tr) {
+            const q = num(field(tr, 'quantity'));
+            const c = num(field(tr, 'unit_cost'));
+            if (q === null || c === null) { updateSummary(); return; }
+            const rate = num(field(tr, 'tax_rate')) || 0;
+            const sub = round2(q * c);
+            const tax = round2(sub * rate / 100);
+            field(tr, 'subtotal').value = sub.toFixed(2);
+            field(tr, 'tax_amount').value = tax.toFixed(2);
+            field(tr, 'total').value = round2(sub + tax).toFixed(2);
+            updateSummary();
+        }
+
+        itemsBody.addEventListener('input', (e) => {
+            const name = e.target.name || '';
+            const tr = e.target.closest('tr');
+            if (!tr) return;
+            if (/\[(quantity|unit_cost|tax_rate)\]$/.test(name)) {
+                recalcRow(tr);
+            } else if (/\[(subtotal|tax_amount)\]$/.test(name)) {
+                // Corrección manual: el total sigue a subtotal + impuesto
+                const sub = num(field(tr, 'subtotal')) || 0;
+                const tax = num(field(tr, 'tax_amount')) || 0;
+                field(tr, 'total').value = round2(sub + tax).toFixed(2);
+                updateSummary();
+            } else if (/\[total\]$/.test(name)) {
+                updateSummary();
+            }
+        });
+
+        itemsBody.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-item-row')) setTimeout(updateSummary, 0);
+        });
+
         // ---------- Buscador de productos y creación rápida ----------
         const form = document.getElementById('supplier-invoice-form');
         const csrf = form.querySelector('input[name="_token"]').value;
@@ -412,6 +475,7 @@
             setIfEmpty('unit', p.default_unit);
             setIfEmpty('unit_cost', p.cost);
             setIfEmpty('tax_rate', p.tax_rate);
+            recalcRow(tr);
             closePanel();
             (field(tr, 'quantity') || input).focus();
         }
@@ -586,6 +650,7 @@
                 btn.disabled = false;
             }
         });
+        updateSummary();
     })();
 </script>
 @endpush
