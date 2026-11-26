@@ -64,42 +64,12 @@ class FiscalLedgerService
 
         $order->loadMissing(['items', 'customerParty', 'fiscalDocument']);
 
-        $taxable = 0.0;
-        $exempt = 0.0;
-        $tax = 0.0;
-        $total = 0.0;
-        $taxRates = [];
-
-        foreach ($order->items as $item) {
-            /** @var OrderItem $item */
-            $lineTotal = (float) ($item->subtotal ?? 0);
-            $taxAmount = (float) ($item->tax_amount ?? 0);
-            $baseAmount = max($lineTotal - $taxAmount, 0);
-            $rate = (float) ($item->tax_rate ?? 0);
-
-            if ($taxAmount > 0) {
-                $taxable += $baseAmount;
-                if ($rate > 0) {
-                    $taxRates[$rate] = ($taxRates[$rate] ?? 0) + $taxAmount;
-                }
-            } else {
-                $exempt += $lineTotal;
-            }
-
-            $tax += $taxAmount;
-            $total += $lineTotal;
-        }
-
-        if ($total <= 0 && $order->total) {
-            $total = (float) $order->total;
-        }
-
-        $taxRate = 0.0;
-        if (count($taxRates) === 1) {
-            $taxRate = array_key_first($taxRates);
-        } elseif ($taxable > 0 && $tax > 0) {
-            $taxRate = round(($tax / $taxable) * 100, 2);
-        }
+        $amounts = self::saleAmounts($order);
+        $taxable = $amounts['taxable_amount'];
+        $exempt = $amounts['exempt_amount'];
+        $tax = $amounts['tax_amount'];
+        $total = $amounts['total_amount'];
+        $taxRate = $amounts['tax_rate'];
 
         $documentDate = optional($order->invoiced_at ?? $order->created_at)->toDateString();
         $currency = Arr::get($metadata, 'currency', 'USD');
@@ -224,5 +194,61 @@ class FiscalLedgerService
             'NOTA_CREDITO', 'NOTACREDITO', 'NOTA DE CREDITO', '03' => 'NOTA_CREDITO',
             default => $type ?: 'FACTURA',
         };
+    }
+
+    /**
+     * Importes del libro de ventas de una orden. Cada línea guarda `total` con su IVA incluido
+     * (unit_price × cantidad + tax_amount): base imponible = total − IVA.
+     *
+     * @return array{taxable_amount: float, exempt_amount: float, tax_amount: float, tax_rate: float, total_amount: float}
+     */
+    public static function saleAmounts(Order $order): array
+    {
+        $order->loadMissing('items');
+
+        $taxable = 0.0;
+        $exempt = 0.0;
+        $tax = 0.0;
+        $total = 0.0;
+        $taxRates = [];
+
+        foreach ($order->items as $item) {
+            /** @var OrderItem $item */
+            $lineTotal = (float) ($item->total ?? 0);
+            $taxAmount = (float) ($item->tax_amount ?? 0);
+            $baseAmount = max($lineTotal - $taxAmount, 0);
+            $rate = (float) ($item->tax_rate ?? 0);
+
+            if ($taxAmount > 0) {
+                $taxable += $baseAmount;
+                if ($rate > 0) {
+                    $taxRates[$rate] = ($taxRates[$rate] ?? 0) + $taxAmount;
+                }
+            } else {
+                $exempt += $lineTotal;
+            }
+
+            $tax += $taxAmount;
+            $total += $lineTotal;
+        }
+
+        if ($total <= 0 && $order->total) {
+            $total = (float) $order->total;
+        }
+
+        $taxRate = 0.0;
+        if (count($taxRates) === 1) {
+            $taxRate = array_key_first($taxRates);
+        } elseif ($taxable > 0 && $tax > 0) {
+            $taxRate = round(($tax / $taxable) * 100, 2);
+        }
+
+        return [
+            'taxable_amount' => round($taxable, 2),
+            'exempt_amount' => round($exempt, 2),
+            'tax_amount' => round($tax, 2),
+            'tax_rate' => (float) $taxRate,
+            'total_amount' => round($total, 2),
+        ];
     }
 }
