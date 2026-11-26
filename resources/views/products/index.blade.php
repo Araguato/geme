@@ -52,7 +52,7 @@
 @if(session('status'))
     <div class="alert alert-info">{{ session('status') }}</div>
 @endif
-<table class="table table-striped" id="productsTable">
+<div class="table-responsive"><table class="table table-striped" id="productsTable">
     <thead>
     <tr>
         <th>Imagen</th>
@@ -113,7 +113,7 @@
         </tr>
     @endforeach
     </tbody>
-</table>
+</table></div>
 
 <script>
     // Búsqueda al escribir (sin pulsar Enter ni el botón): se envía el formulario tras una pausa corta

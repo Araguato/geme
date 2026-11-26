@@ -244,7 +244,7 @@
                         <input type="hidden" name="customer_name" id="customer-name-input">
                         <div class="form-text" id="customer-rif-text">RIF: consumidor final</div>
                     </div>
-                    <table class="table table-sm" id="cart-table">
+                    <div class="table-responsive"><table class="table table-sm" id="cart-table">
                         <thead>
                             <tr>
                                 <th>Producto</th>
@@ -259,7 +259,7 @@
                                 <td colspan="5" class="text-center text-body-secondary">Agrega productos</td>
                             </tr>
                         </tbody>
-                    </table>
+                    </table></div>
                     <div class="d-flex justify-content-between fs-5 fw-bold">
                         <span>Total:</span>
                         <span id="cart-total">$ 0.00</span>

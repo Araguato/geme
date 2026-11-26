@@ -56,6 +56,9 @@
         ];
     }
 @endphp
+@if($isAdmin)
+    @include('dashboard.onboarding')
+@endif
 
 <style>
     .dash { --dash-accent: {{ $accent }}; }
