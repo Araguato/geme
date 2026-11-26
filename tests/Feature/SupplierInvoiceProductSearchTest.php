@@ -367,4 +367,41 @@ class SupplierInvoiceProductSearchTest extends TestCase
             'items' => [['quantity' => 1, 'unit_cost' => 100, 'description' => 'x']],
         ])->assertSessionHasErrors('bcv_rate_at_issue');
     }
+
+    public function test_purchase_in_kilos_enters_stock_in_pieces_with_cost_per_piece(): void
+    {
+        $admin = $this->user('admin');
+        $party = Party::create(['name' => 'Proveedor', 'is_active' => true]);
+        $supplier = Supplier::create(['party_id' => $party->id]);
+        $barra = $this->product('Barra silicón gruesa', ['is_stock_tracked' => true, 'default_unit' => 'unidad']);
+
+        // 3 kg a 9,74 USD/kg sin IVA, 31 barras por kilo
+        $this->actingAs($admin)->post('/supplier-invoices', [
+            'supplier_id' => $supplier->id, 'date' => now()->toDateString(), 'currency' => 'USD', 'doc_type' => 'FC', 'status' => 'pendiente',
+            'items' => [['product_id' => $barra->id, 'unit' => 'kg', 'unit_factor' => 31, 'quantity' => 3, 'unit_cost' => 9.74, 'tax_rate' => 16, 'tax_amount' => '', 'subtotal' => '', 'total' => '']],
+        ])->assertSessionHasNoErrors();
+
+        $invoice = SupplierInvoice::latest('id')->firstOrFail();
+        $item = $invoice->items()->firstOrFail();
+        // La factura queda como el papel
+        $this->assertEquals(3, (float) $item->quantity);
+        $this->assertEquals(29.22, (float) $item->subtotal);
+        $this->assertEquals(31, (float) $item->unit_factor);
+        // El inventario, en piezas y costo por pieza
+        $stock = StockItem::where('product_id', $barra->id)->firstOrFail();
+        $this->assertEquals(93, (float) $stock->quantity);
+        $this->assertEqualsWithDelta(9.74 / 31, (float) $stock->average_cost, 0.000001);
+        $this->assertSame('unidad', $stock->unit);
+        // El producto recuerda la equivalencia y la propone la próxima vez (costo por kilo)
+        $this->assertEquals(31, (float) $barra->fresh()->purchase_unit_factor);
+        $hint = $this->actingAs($admin)->getJson(route('supplier-invoices.products.search', ['q' => 'silic']))->json('products.0');
+        $this->assertEquals(31, $hint['purchase_unit_factor']);
+
+        // Editar y volver a guardar no duplica el stock
+        $this->actingAs($admin)->put("/supplier-invoices/{$invoice->id}", [
+            'supplier_id' => $supplier->id, 'date' => now()->toDateString(), 'currency' => 'USD', 'doc_type' => 'FC', 'status' => 'pendiente',
+            'items' => [['product_id' => $barra->id, 'unit' => 'kg', 'unit_factor' => 31, 'quantity' => 2, 'unit_cost' => 9.74, 'tax_rate' => 16]],
+        ])->assertSessionHasNoErrors();
+        $this->assertEquals(62, (float) StockItem::where('product_id', $barra->id)->sum('quantity'));
+    }
 }

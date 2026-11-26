@@ -48,12 +48,15 @@ class PurchaseService
                 $subtotal = self::filled($item, 'subtotal') ? (float) $item['subtotal'] : round($quantity * $unitCost, 2);
                 $taxAmount = self::filled($item, 'tax_amount') ? (float) $item['tax_amount'] : round($subtotal * $taxRate / 100, 2);
                 $total = self::filled($item, 'total') ? (float) $item['total'] : round($subtotal + $taxAmount, 2);
+                // Piezas que trae cada unidad comprada (31 barras por kilo); 1 = sin conversión
+                $factor = self::filled($item, 'unit_factor') ? (float) $item['unit_factor'] : 1.0;
 
                 $invoiceItem = SupplierInvoiceItem::create([
                     'supplier_invoice_id' => $invoice->id,
                     'product_id' => $productId,
                     'description' => Arr::get($item, 'description'),
                     'unit' => Arr::get($item, 'unit'),
+                    'unit_factor' => $factor,
                     'quantity' => $quantity,
                     'unit_cost' => $unitCost,
                     'tax_rate' => $taxRate,
@@ -70,15 +73,20 @@ class PurchaseService
                     $stockUnitCost = ($invoice->currency === 'VES' && (float) $invoice->bcv_rate_at_issue > 0)
                         ? $unitCost / (float) $invoice->bcv_rate_at_issue
                         : $unitCost;
+                    // ...y por la unidad de venta: costo por pieza = costo por unidad comprada / piezas
+                    $stockUnitCost = $stockUnitCost / $factor;
                     $product = Product::find($productId);
+                    if ($product && $factor != 1.0 && !$product->purchase_unit_factor) {
+                        $product->forceFill(['purchase_unit' => $invoiceItem->unit, 'purchase_unit_factor' => $factor])->save();
+                    }
                     if ($product && $product->is_stock_tracked) {
                         InventoryService::recordPurchaseEntry(
                             product: $product,
-                            quantity: $quantity,
+                            quantity: $quantity * $factor,
                             unitCost: $stockUnitCost,
                             invoice: $invoice,
                             userId: $userId,
-                            unitOverride: $invoiceItem->unit,
+                            unitOverride: $factor != 1.0 ? ($product->default_unit ?: null) : $invoiceItem->unit,
                             warehouseId: $warehouseId,
                         );
                     }

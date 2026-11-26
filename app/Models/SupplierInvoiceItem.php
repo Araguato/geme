@@ -14,6 +14,7 @@ class SupplierInvoiceItem extends Model
         'product_id',
         'description',
         'unit',
+        'unit_factor',
         'quantity',
         'unit_cost',
         'tax_rate',
@@ -24,6 +25,7 @@ class SupplierInvoiceItem extends Model
     ];
 
     protected $casts = [
+        'unit_factor' => 'float',
         'quantity' => 'float',
         'unit_cost' => 'float',
         'tax_rate' => 'float',

@@ -141,15 +141,18 @@ class SupplierInvoiceProductController extends Controller
             : collect();
 
         $products = Product::whereIn('id', $ids)->pluck('cost', 'id');
+        // Costo del producto y promedio están por pieza; la factura se escribe por unidad comprada
+        $factors = Product::whereIn('id', $ids)->pluck('purchase_unit_factor', 'id');
+        $perPurchaseUnit = fn ($id, $value) => round((float) $value * max(1.0, (float) ($factors[$id] ?? 1)), 6);
 
         $out = [];
         foreach ($ids as $id) {
             if ((float) ($last[$id] ?? 0) > 0) {
                 $out[$id] = ['suggested_cost' => round((float) $last[$id], 6), 'cost_source' => 'última compra'];
             } elseif ($currency === 'USD' && (float) ($products[$id] ?? 0) > 0) {
-                $out[$id] = ['suggested_cost' => round((float) $products[$id], 6), 'cost_source' => 'costo del producto'];
+                $out[$id] = ['suggested_cost' => $perPurchaseUnit($id, $products[$id]), 'cost_source' => 'costo del producto'];
             } elseif ((float) ($avg[$id] ?? 0) > 0) {
-                $out[$id] = ['suggested_cost' => round((float) $avg[$id], 6), 'cost_source' => 'costo promedio'];
+                $out[$id] = ['suggested_cost' => $perPurchaseUnit($id, $avg[$id]), 'cost_source' => 'costo promedio'];
             } else {
                 $out[$id] = ['suggested_cost' => null, 'cost_source' => null];
             }
@@ -165,6 +168,8 @@ class SupplierInvoiceProductController extends Controller
             'name' => $p->name,
             'sku' => $p->sku,
             'default_unit' => $p->default_unit,
+            'purchase_unit' => $p->purchase_unit,
+            'purchase_unit_factor' => $p->purchase_unit_factor !== null ? (float) $p->purchase_unit_factor : null,
             'cost' => $p->cost !== null ? (float) $p->cost : null,
             'tax_rate' => $p->tax_rate !== null ? (float) $p->tax_rate : null,
             'is_stock_tracked' => (bool) $p->is_stock_tracked,

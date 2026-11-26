@@ -190,6 +190,7 @@ class SupplierInvoiceController extends Controller
             'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.description' => 'nullable|string|max:255',
             'items.*.unit' => 'nullable|string|max:20',
+            'items.*.unit_factor' => 'nullable|numeric|gt:0',
             'items.*.quantity' => 'required|numeric|min:0.0001',
             'items.*.unit_cost' => 'required|numeric|gt:0',
             'items.*.tax_rate' => 'nullable|numeric|min:0',

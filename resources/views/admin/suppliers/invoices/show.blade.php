@@ -101,7 +101,7 @@
                                 <td>{{ $item->product?->name ?? 'N/A' }}</td>
                                 <td>{{ $item->description ?: '—' }}</td>
                                 <td class="text-end">{{ number_format($item->quantity, 4) }}</td>
-                                <td>{{ $item->unit ?: $item->product?->default_unit ?: '—' }}</td>
+                                <td>{{ $item->unit ?: $item->product?->default_unit ?: '—' }}@if((float) $item->unit_factor > 0 && (float) $item->unit_factor != 1.0)<div class="small text-muted">× {{ rtrim(rtrim(number_format($item->unit_factor, 4, '.', ''), '0'), '.') }} pzs = {{ rtrim(rtrim(number_format($item->quantity * $item->unit_factor, 2, '.', ''), '0'), '.') }} pzs</div>@endif</td>
                                 <td class="text-end">{{ number_format($item->unit_cost, 2) }}</td>
                                 <td class="text-end">{{ number_format($item->tax_rate > 0 && $item->tax_rate < 1 ? $item->tax_rate * 100 : $item->tax_rate, 2) }}</td>
                                 <td class="text-end">{{ number_format($item->tax_amount, 2) }}</td>

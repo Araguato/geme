@@ -22,6 +22,7 @@
                 'product_id' => $item->product_id,
                 'description' => $item->description,
                 'unit' => $item->unit,
+                'unit_factor' => $item->unit_factor,
                 'quantity' => $item->quantity,
                 'unit_cost' => $item->unit_cost,
                 'tax_rate' => $item->tax_rate,
@@ -175,7 +176,7 @@
                 <tr>
                     <th style="min-width: 200px;">Producto</th>
                     <th>Descripción</th>
-                    <th style="width: 110px;">Unidad</th>
+                    <th style="width: 150px;">Unidad / piezas por unidad</th>
                     <th style="width: 130px;">Cantidad</th>
                     <th style="width: 150px;">Costo unitario <span class="cur-label"></span></th>
                     <th style="width: 130px;">IVA %</th>
@@ -214,6 +215,12 @@
                                     <option value="{{ $u['value'] }}" @selected($rowUnit === $u['value'])>{{ $u['label'] }}</option>
                                 @endforeach
                             </select>
+                            @php($rowFactor = (float) ($row['unit_factor'] ?? 1))
+                            <input type="number" name="items[{{ $index }}][unit_factor]" step="0.0001" min="0.0001"
+                                   class="form-control form-control-sm mt-1" placeholder="piezas por unidad (1 = igual)"
+                                   title="Piezas de venta que trae cada unidad comprada. Ej.: 31 barras por kilo"
+                                   value="{{ $rowFactor > 0 && $rowFactor != 1.0 ? $rowFactor : '' }}">
+                            <div class="form-text stock-note"></div>
                         </td>
                         <td>
                             <input type="number" name="items[{{ $index }}][quantity]" step="0.0001" min="0.0001" required
@@ -368,7 +375,9 @@
                     </div>
                 </td>
                 <td><input type="text" name="items[${index}][description]" class="form-control form-control-sm"></td>
-                <td><select name="items[${index}][unit]" class="form-select form-select-sm">${unitOptionsHtml}</select></td>
+                <td><select name="items[${index}][unit]" class="form-select form-select-sm">${unitOptionsHtml}</select>
+                    <input type="number" name="items[${index}][unit_factor]" step="0.0001" min="0.0001" class="form-control form-control-sm mt-1" placeholder="piezas por unidad (1 = igual)" title="Piezas de venta que trae cada unidad comprada. Ej.: 31 barras por kilo">
+                    <div class="form-text stock-note"></div></td>
                 <td><input type="number" name="items[${index}][quantity]" step="0.0001" min="0.0001" required class="form-control form-control-sm"></td>
                 <td><input type="number" name="items[${index}][unit_cost]" step="0.000001" min="0.000001" required class="form-control form-control-sm"></td>
                 <td><select name="items[${index}][tax_rate]" class="form-select form-select-sm">${taxOptionsHtml}</select></td>
@@ -426,6 +435,7 @@
             document.getElementById('sum-usd-row').classList.toggle('d-none', !inBs);
             document.getElementById('sum-usd').textContent = rate > 0 ? fmt(tot / rate) : '—';
             document.querySelectorAll('.cur-label').forEach((el) => { el.textContent = inBs ? '(Bs)' : '(USD)'; });
+            itemsBody.querySelectorAll('tr').forEach(updateStockNote);
         }
 
         // La tasa se sugiere según la fecha de emisión (histórico de Divisas); si se escribe a mano no se pisa
@@ -448,9 +458,25 @@
             updateSummary();
         });
 
+        // Lo que entra al inventario: piezas y costo por pieza (en USD)
+        function updateStockNote(tr) {
+            const note = tr.querySelector('.stock-note');
+            if (!note) return;
+            const f = num(field(tr, 'unit_factor'));
+            const q = num(field(tr, 'quantity'));
+            const c = num(field(tr, 'unit_cost'));
+            if (!f || f === 1 || !q || !c) { note.textContent = ''; return; }
+            const rate = num(document.getElementById('invoice-rate')) || 0;
+            const inBs = document.getElementById('invoice-currency').value === 'VES';
+            const usd = inBs ? (rate > 0 ? c / rate : null) : c;
+            note.textContent = 'Entran ' + (q * f).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' piezas'
+                + (usd !== null ? ' a ' + (usd / f).toFixed(4) + ' USD c/u' : '');
+        }
+
         function recalcRow(tr) {
             const q = num(field(tr, 'quantity'));
             const c = num(field(tr, 'unit_cost'));
+            updateStockNote(tr);
             if (q === null || c === null) { updateSummary(); return; }
             const rate = num(field(tr, 'tax_rate')) || 0;
             const sub = round2(q * c);
@@ -465,7 +491,7 @@
             const name = e.target.name || '';
             const tr = e.target.closest('tr');
             if (!tr) return;
-            if (/\[(quantity|unit_cost|tax_rate)\]$/.test(name)) {
+            if (/\[(quantity|unit_cost|tax_rate|unit_factor)\]$/.test(name)) {
                 recalcRow(tr);
             } else if (/\[(subtotal|tax_amount)\]$/.test(name)) {
                 // Corrección manual: el total sigue a subtotal + impuesto
@@ -546,7 +572,8 @@
                     || o.textContent.trim().toLowerCase().startsWith(wanted));
                 if (opt) el.value = opt.value;
             };
-            pick('unit', p.default_unit);
+            pick('unit', (Number(p.purchase_unit_factor) > 0 && p.purchase_unit) ? p.purchase_unit : p.default_unit);
+            if (Number(p.purchase_unit_factor) > 0 && Number(p.purchase_unit_factor) !== 1) setIfEmpty('unit_factor', Number(p.purchase_unit_factor));
             if (Number(p.tax_rate) > 0) pick('tax_rate', Number(p.tax_rate));
             recalcRow(tr);
             closePanel();

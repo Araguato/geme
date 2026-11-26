@@ -31,6 +31,8 @@ class Product extends Model
         'stock_unit_id',
         'base_unit_id',
         'default_unit',
+        'purchase_unit',
+        'purchase_unit_factor',
         'cost',
         'markup_percent',
         'tax_rate',
