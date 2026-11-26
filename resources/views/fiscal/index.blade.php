@@ -27,6 +27,20 @@
     <div class="alert alert-secondary">No hay medio de emisión configurado: las ventas se registran sin emitir por un medio externo. @if(auth()->user()->hasRole('admin'))<a href="{{ route('settings.fiscal.edit') }}">Configurar</a>@endif</div>
 @endif
 
+@if($pendingReports->isNotEmpty())
+    @php($overdue = $pendingReports->filter->isReportOverdue()->count())
+    <div class="alert {{ $overdue ? 'alert-danger' : 'alert-warning' }} d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+            <strong>{{ $pendingReports->count() }}</strong> factura(s) de talonario por remitir al SENIAT o a la imprenta
+            (PDF a más tardar al día siguiente){{ $overdue ? ' — ' . $overdue . ' vencida(s)' : '' }}.
+            Abre cada copia con «Ver copia», envíala y luego márcala como remitida.
+        </div>
+        <form method="POST" action="{{ route('fiscal-documents.report-all') }}" onsubmit="return confirm('¿Marcar todas como remitidas?')">@csrf
+            <button class="btn btn-sm btn-dark">Marcar todas como remitidas</button>
+        </form>
+    </div>
+@endif
+
 <div class="d-flex flex-wrap gap-2 mb-3">
     <a href="{{ route('fiscal-documents.index') }}" class="btn btn-sm {{ $status ? 'btn-outline-secondary' : 'btn-secondary' }}">Todos</a>
     @foreach(\App\Models\FiscalDocument::STATUSES as $st)
@@ -49,10 +63,25 @@
                 <span class="badge {{ $badge[$d->status] ?? 'bg-secondary' }}">{{ \App\Models\FiscalDocument::statusLabel($d->status) }}</span>
                 @if($d->environment === 'test')<span class="badge bg-dark">prueba</span>@endif
                 @if($d->last_error)<div class="small text-danger">{{ $d->last_error }}</div>@endif
+                @if($d->status === 'contingency')
+                    @if($d->reported_at)
+                        <div class="small text-success">Remitida {{ $d->reported_at->format('d/m/Y H:i') }}</div>
+                    @else
+                        <div class="small {{ $d->isReportOverdue() ? 'text-danger fw-semibold' : 'text-warning-emphasis' }}">
+                            Remitir antes del {{ $d->reportDueAt()?->format('d/m/Y') }}{{ $d->isReportOverdue() ? ' (vencida)' : '' }}
+                        </div>
+                    @endif
+                @endif
             </td>
             <td class="small">{{ $d->invoice_number ?? '—' }}<br><span class="text-muted">{{ $d->control_number }}</span></td>
             <td>{{ $d->attempts }}</td>
             <td class="text-end">
+                @if($d->needsReport())
+                    <a href="{{ route('pos.ticket', $d->order_id) }}" target="_blank" class="btn btn-sm btn-outline-secondary">Ver copia</a>
+                    <form method="POST" action="{{ route('fiscal-documents.report', $d) }}" class="d-inline">@csrf
+                        <button class="btn btn-sm btn-outline-success">Marcar remitida</button>
+                    </form>
+                @endif
                 @unless($d->isDone())
                     <form method="POST" action="{{ route('fiscal-documents.retry', $d) }}" class="d-inline">@csrf
                         <button class="btn btn-sm btn-outline-primary">Reintentar</button>

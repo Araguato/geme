@@ -228,6 +228,8 @@ Route::middleware(['auth', $finance])->group(function () {
     Route::get('fiscal-documents', [FiscalDocumentController::class, 'index'])->name('fiscal-documents.index');
     Route::post('fiscal-documents/process', [FiscalDocumentController::class, 'processPending'])->name('fiscal-documents.process');
     Route::post('fiscal-documents/{document}/retry', [FiscalDocumentController::class, 'retry'])->name('fiscal-documents.retry');
+    Route::post('fiscal-documents/{document}/report', [FiscalDocumentController::class, 'report'])->name('fiscal-documents.report');
+    Route::post('fiscal-documents/report-all', [FiscalDocumentController::class, 'reportAll'])->name('fiscal-documents.report-all');
     Route::post('fiscal-documents/{document}/contingency', [FiscalDocumentController::class, 'contingency'])->name('fiscal-documents.contingency');
 
     // Categorías de gastos

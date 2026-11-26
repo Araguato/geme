@@ -28,6 +28,7 @@ class FiscalDocumentController extends Controller
             'docs' => $docs,
             'status' => $status,
             'counts' => FiscalDocument::selectRaw('status, COUNT(*) as n')->groupBy('status')->pluck('n', 'status'),
+            'pendingReports' => FiscalDocument::where('status', 'contingency')->whereNull('reported_at')->get(),
             'enabled' => FiscalManager::enabled(),
             'providerLabel' => FiscalManager::LABELS[FiscalManager::key()],
         ]);
@@ -63,6 +64,40 @@ class FiscalDocumentController extends Controller
         FiscalEmissionService::registerContingency($document, $data['invoice_number'], $data['control_number'], Auth::id());
 
         return back()->with('success', 'Factura de talonario registrada en contingencia.');
+    }
+
+    /** Anota que la factura de talonario ya se remitió (PDF al SENIAT o a la imprenta). */
+    public function report(Request $request, FiscalDocument $document)
+    {
+        abort_unless($document->status === 'contingency', 422, 'Solo las facturas de contingencia se remiten.');
+        $this->markReported($document, $request);
+
+        return back()->with('success', 'Documento marcado como remitido.');
+    }
+
+    public function reportAll(Request $request)
+    {
+        $docs = FiscalDocument::where('status', 'contingency')->whereNull('reported_at')->get();
+        $docs->each(fn ($d) => $this->markReported($d, $request));
+
+        return back()->with('success', "Documentos marcados como remitidos: {$docs->count()}.");
+    }
+
+    private function markReported(FiscalDocument $document, Request $request): void
+    {
+        if ($document->reported_at) {
+            return;
+        }
+        $document->forceFill(['reported_at' => now(), 'reported_by' => Auth::id()])->save();
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'fiscal_contingency_reported',
+            'entity_type' => FiscalDocument::class,
+            'entity_id' => $document->id,
+            'description' => "Factura de contingencia {$document->invoice_number} remitida (pedido #{$document->order_id})",
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
     }
 
     public function edit()

@@ -157,6 +157,42 @@ class FiscalEmissionTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_contingencia_se_remite_al_dia_siguiente_y_queda_registrada(): void
+    {
+        Setting::set('fiscal_provider', 'sandbox');
+        $admin = $this->user('admin');
+        $doc = FiscalEmissionService::enqueue($this->order());
+        $this->actingAs($admin)->post(route('fiscal-documents.contingency', $doc), [
+            'invoice_number' => 'T-0002', 'control_number' => '00-8888',
+        ])->assertSessionHasNoErrors();
+        $doc->refresh();
+
+        $this->assertTrue($doc->needsReport());
+        $this->assertFalse($doc->isReportOverdue());
+        $this->actingAs($admin)->get(route('fiscal-documents.index'))->assertOk()
+            ->assertSee('por remitir')->assertSee('Remitir antes del');
+
+        // Vence al terminar el día siguiente
+        $this->travel(2)->days();
+        $this->assertTrue($doc->fresh()->isReportOverdue());
+        $this->actingAs($admin)->get(route('fiscal-documents.index'))->assertSee('vencida');
+        $this->travelBack();
+
+        $this->actingAs($admin)->post(route('fiscal-documents.report', $doc))->assertSessionHas('success');
+        $doc->refresh();
+        $this->assertNotNull($doc->reported_at);
+        $this->assertFalse($doc->needsReport());
+        $this->assertTrue(AuditLog::where('action', 'fiscal_contingency_reported')->where('entity_id', $doc->id)->exists());
+
+        // Un documento emitido por el medio no se "remite"
+        $issued = FiscalEmissionService::enqueue($this->order());
+        FiscalEmissionService::process($issued->refresh());
+        $this->actingAs($admin)->post(route('fiscal-documents.report', $issued))->assertStatus(422);
+
+        // El cajero no tiene acceso
+        $this->actingAs($this->user('cajero'))->post(route('fiscal-documents.report', $doc))->assertForbidden();
+    }
+
     public function test_payload_con_exentos_alicuotas_rif_y_equivalente_en_bs(): void
     {
         $party = Party::create(['type' => 'customer', 'name' => 'ACME', 'document_type' => 'RIF', 'document_number' => 'j-12345678-9', 'is_active' => true]);
