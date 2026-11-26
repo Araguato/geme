@@ -7,7 +7,7 @@
 <form action="{{ route('settings.bcv.update') }}" method="POST" class="mt-3" style="max-width: 400px;">
     @csrf
     <div class="mb-3">
-        <label class="form-label">Tasa BCV (Bs / USD)</label>
+        <label class="form-label">Tasa BCV (Bs / USD) <x-help title="Tasa BCV del TPV" text="Es la tasa actual que usa el punto de venta para calcular precios en Bs. Acepta hasta 6 decimales, como la publica el BCV. Para facturas antiguas de proveedores no la cambies: usa la tasa de emisión en la factura." /></label>
         <input type="number" step="0.000001" min="0.000001" name="bcv_rate" class="form-control" value="{{ old('bcv_rate', $bcvRate) }}" required>
     </div>
     <button type="submit" class="btn btn-primary">Guardar tasa</button>

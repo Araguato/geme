@@ -99,7 +99,7 @@
 
         <div class="row g-3 mb-3">
             <div class="col-md-2">
-                <label class="form-label">Moneda</label>
+                <label class="form-label">Moneda <x-help title="Moneda de la factura" text="Elige la moneda en que viene impresa la factura. Si es Bs, indica la tasa de emisión y el sistema calcula el equivalente en USD para el inventario." /></label>
                 @php($cur = old('currency', $invoice->currency ?? 'USD'))
                 <select name="currency" id="invoice-currency" class="form-select">
                     <option value="USD" @selected($cur === 'USD')>USD</option>
@@ -135,7 +135,7 @@
 
         <div class="row g-3 mb-3">
             <div class="col-md-3">
-                <label class="form-label">Tasa BCV de la fecha de emisión</label>
+                <label class="form-label">Tasa BCV de la fecha de emisión <x-help title="Tasa de la fecha de emisión" text="Es la tasa del día en que el proveedor emitió la factura, no la de hoy. Se sugiere desde el histórico y no cambia los precios de venta ni la tasa del TPV." /></label>
                 <input type="number" name="bcv_rate_at_issue" id="invoice-rate" step="0.000001" min="0" class="form-control"
                        value="{{ old('bcv_rate_at_issue', $invoice->bcv_rate_at_issue ?: $bcvRate) }}">
                 <div class="form-text" id="rate-hint">Solo vale para esta factura: no cambia la tasa del TPV ni los precios de venta.</div>
@@ -159,7 +159,7 @@
 
         <div class="row mb-3">
             <div class="col-md-5">
-                <label class="form-label">Depósito que recibe la mercancía</label>
+                <label class="form-label">Depósito que recibe la mercancía <x-help title="Depósito" text="Almacén donde entra la mercancía. El stock y el costo se registran en este depósito." /></label>
                 <select name="warehouse_id" class="form-select">
                     <option value="">Almacén principal</option>
                     @foreach($warehouses as $warehouse)
@@ -176,9 +176,9 @@
                 <tr>
                     <th style="min-width: 200px;">Producto</th>
                     <th>Descripción</th>
-                    <th style="width: 150px;">Unidad / piezas por unidad</th>
+                    <th style="width: 150px;">Unidad / piezas por unidad <x-help title="Compra en una unidad, venta en otra" text="Si compras por kilo y vendes por pieza, escribe cuántas piezas trae cada kilo. El stock entra en piezas y el costo se reparte entre ellas." /></th>
                     <th style="width: 130px;">Cantidad</th>
-                    <th style="width: 150px;">Costo unitario <span class="cur-label"></span></th>
+                    <th style="width: 150px;">Costo unitario <span class="cur-label"></span> <x-help title="Costo sin IVA" text="Escribe el precio de la factura sin IVA. El IVA se agrega aparte con la columna IVA %; si lo incluyes aquí se cuenta dos veces." /></th>
                     <th style="width: 130px;">IVA %</th>
                     <th style="width: 150px;">Impuesto</th>
                     <th style="width: 150px;">Subtotal</th>
